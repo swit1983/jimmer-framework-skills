@@ -1,0 +1,101 @@
+// Jimmer DTO 语言示例
+// DTO 文件放置在 src/main/dto 目录下，扩展名为 .dto
+// 编译时自动生成 Java/Kotlin 代码
+
+/**
+ * 简单 DTO - 根据 BookStore 实体生成
+ * 只获取指定属性
+ */
+BookStoreDto implements BookStore {
+    id
+    name
+    website
+}
+
+/**
+ * DTO 带关联 - 获取书店及其书籍信息
+ */
+BookStoreWithBooks implements BookStore {
+    id
+    name
+    website
+    
+    // 携带关联对象 books，只获取指定属性
+    books {
+        id
+        name
+        edition
+        price
+    }
+}
+
+/**
+ * DTO 深度嵌套 - 获取完整树形结构
+ */
+BookStoreFull implements BookStore {
+    id
+    name
+    website
+    
+    books {
+        id
+        name
+        edition
+        price
+        
+        // 书籍的作者信息
+        authors {
+            id
+            firstName
+            lastName
+            gender
+        }
+        
+        // 书店信息（递归引用已有的属性）
+        store {
+            id
+            name
+        }
+    }
+}
+
+/**
+ * Input DTO - 用于保存操作
+ */
+BookInput implements Book {
+    name
+    edition
+    price
+    
+    // 只需要关联 id 即可
+    storeId
+    
+    // 多对多关联，使用 id 列表
+    authorIds
+}
+
+/**
+ * 投影 DTO - 选择实体的一部分属性
+ */
+AuthorSimple implements Author {
+    id
+    firstName
+    lastName
+    // 计算全名
+    fullName = firstName + " " + lastName
+}
+
+/**
+ * 参数化 DTO - 可以对关联进行过滤
+ */
+BookStoreWithExpensiveBooks implements BookStore {
+    id
+    name
+    
+    // 只获取价格大于指定值的书籍
+    books(price > 50) {
+        id
+        name
+        price
+    }
+}

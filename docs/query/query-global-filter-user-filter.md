@@ -1,0 +1,481 @@
+# 自定义过滤器
+
+> 来源: https://jimmer.deno.dev/zh/docs/query/global-filter/user-filter
+
+* [查询篇](/zh/docs/query/)
+* [全局过滤器](/zh/docs/query/global-filter/)
+* 自定义过滤器
+
+本页总览
+
+# 自定义过滤器
+
+## 提供抽象实体基类[​](#提供抽象实体基类 "提供抽象实体基类的直接链接")
+
+首先，提供一个`MappedSuperclass`超类型，让所有需要多租户管理的实体类都继承它
+
+* Java
+* Kotlin
+
+TenantAware.java
+
+```
+@MappedSuperclass  
+public interface TenantAware {  
+  
+    String tenant();  
+}
+```
+
+TenantAware.kt
+
+```
+@MappedSuperclass  
+interface TenantAware {  
+  
+    val tenant: String  
+}
+```
+
+任何需要支持多租户的实体类型都可以继承`TenantAware`，例如`Book`
+
+* Java
+* Kotlin
+
+Book.java
+
+```
+@Entity  
+public interface Book extends TenantAware {  
+  
+    ...省略代码...  
+}
+```
+
+Book.kt
+
+```
+@Entity  
+interface Book : TenantAware {  
+      
+    ...省略代码...  
+}
+```
+
+提示
+
+诚然，可以不定义抽象类型，直接对实体类型施加过滤器，这没有任何问题。
+
+然而，更推荐的方法是从实体中提取抽象类型，这样一个过滤器可以过滤多种实体类型。
+
+更重要的是，`MappedSupperClass`支持多继承，即实体类型可以从多个超类型继承。多继承和全局过滤器相结合后可以带来惊人的灵活性。
+
+## 定义过滤器[​](#定义过滤器 "定义过滤器的直接链接")
+
+假设Spring上下文中有一个类型为`TenantProvider`的对象，其Java方法`get()`和kotlin属性`tenant`用于从当前操作者身份信息中提取所属租户。定义如下过滤器
+
+* Java下，拦截器需实现`org.babyfish.jimmer.sql.filter.Filter`接口，
+* Kotlin下，拦截器需实现`org.babyfish.jimmer.sql.kt.filter.KFilter`接口。
+
+如果使用Spring托管，代码方式如下：
+
+* Java
+* Kotlin
+
+```
+@Component  
+public class TenantFilter implements Filter<TenantAwareProps> {  
+  
+    private final TenantProvider tenantProvider;  
+  
+    public TenantFilter(TenantProvider tenantProvider) {  
+        this.tenantProvider = tenantProvider;  
+    }  
+  
+    @Override  
+    public void filter(FilterArgs<TenantAwareProps> args) {  
+        String tenant = tenantProvider.get();  
+        if (tenant != null) {  
+            args.where(args.getTable().tenant().eq(tenant));  
+        }  
+    }  
+}
+```
+
+```
+@Component  
+class TenantFilter(  
+    private val tenantProvider: TenantProvider  
+) : KFilter<TenantAware> {  
+  
+    override fun filter(args: KFilterArgs<TenantAware>) {  
+        tenantProvider.tenant?.let {  
+            args.apply {  
+                where(table.tenant.eq(it))  
+            }  
+        }  
+    }  
+}
+```
+
+Java和Kotlin的过滤器定义略有不同
+
+* Java中，`Filter`的范型参数为`TenantAwareProps`，这是预编译器针对抽象类型`TenantAware`自动生成的代码之一
+* Kotlin中，`KFilter`的范型参数是抽象类型`TenantAware`本身
+
+`TenantFilter`过滤抽象类型`TenantAware`，对于任何直接或间接继承抽象接口`TenantAware`的实体而言，其查询都会被这个过滤器处理，自动添加where条件。
+
+`TenantFilter`内部，首先从提取当前操作者身份信息中提取其所属租户，如果所属租户非null，则使用它来过滤数据，只查询和指定租户匹配的数据。
+
+### Spring环境下配置过滤器[​](#spring环境下配置过滤器 "Spring环境下配置过滤器的直接链接")
+
+上文中，我们定义的类`TenantFilter`被`@Component`修饰，很明显这是一个Spring托管对象。
+
+信息
+
+如果使用Jimmer的SpringBoot Starter且保证过滤器被Spring托管，那么Jimmer就会将注册它，无需额外的配置。
+
+否则，必需手动注册
+
+### 非Spring环境下配置过滤器[​](#非spring环境下配置过滤器 "非Spring环境下配置过滤器的直接链接")
+
+在这种情况下，过滤器类并不需要被`@Component`修饰，将过滤器挂接到SqlClient对象上，即可生效
+
+* Java
+* Kotlin
+
+```
+JSqlClient sqlClient = JSqlBuilder  
+    .newBuilder()  
+    .addFilter(new CustomerFilter())  
+    ...省略其他配置...  
+    .build();
+```
+
+```
+val sqlClient =  
+    newKSqlClient {  
+        addFilters(new CustomerFilter())  
+        ...省略其他配置...  
+    }
+```
+
+## 过滤聚合根对象[​](#过滤聚合根对象 "过滤聚合根对象的直接链接")
+
+过滤聚合根对象是全局过滤器最简单的用法。
+
+由于`Book`实体继承了`TenantAware`，其查询会受到此过滤器的影响。
+
+* Java
+* Kotlin
+
+```
+List<Book> books = sqlClient.getEntities.findAll(Book.class);
+```
+
+```
+val books = sqlClient.entities.findAll(Book::class);
+```
+
+或
+
+* Java
+* Kotlin
+
+```
+BookTable book = Tables.BOOK_TABLE;  
+List<Book> books = sqlClient  
+    .createQuery(book)  
+    .select(book)  
+    .execute();
+```
+
+```
+val books = SqlClient  
+    .createQuery(Book::class) {  
+        select(table)  
+    }  
+    .execute()
+```
+
+生成的SQL如下
+
+```
+select   
+    tb_1_.ID,   
+    tb_1_.TENANT,   
+    tb_1_.NAME,   
+    tb_1_.EDITION,   
+    tb_1_.PRICE,   
+    tb_1_.STORE_ID   
+from BOOK as tb_1_  
+where tb_1_.TENANT = ?
+```
+
+不难发现，这里使用了最简单的查询，没有任何查询参数。但是最终生产的SQL仍然过滤了`tb_1_.TENANT`
+
+## 过滤关联对象[​](#过滤关联对象 "过滤关联对象的直接链接")
+
+不仅可以过滤聚合根对象，关联对象也可以被过滤。用法如下
+
+* Java
+* Kotlin
+
+```
+List<Author> authors = sqlClient.getEntities.findAll(  
+    Fetchers.AUTHOR_FETCHER  
+        .allScalarFields()  
+        .books(  
+            Fetchers.BOOK_FETCHER  
+                .allScalarFields()  
+        )  
+);
+```
+
+```
+val books = sqlClient.entities.findAll(  
+    newFetcher(Author::class).by {  
+        allScalarFields()  
+        books {  
+            allScalarFields()  
+        }  
+    }  
+);
+```
+
+或
+
+* Java
+* Kotlin
+
+```
+AuthorTable author = Tables.AUTHOR_TABLE;  
+List<Author> authors = sqlClient  
+    .createQuery(author)  
+    .select(  
+        author.fetch(  
+            Fetchers.AUTHOR_FETCHER  
+                .allScalarFields()  
+                .books(  
+                    Fetchers.BOOK_FETCHER  
+                        .allScalarFields()  
+                )  
+        )  
+    )  
+    .execute();
+```
+
+```
+val authors = SqlClient  
+    .createQuery(Author::class) {  
+        select(  
+            table.fetchBy {  
+                allScalarFields()  
+                books {  
+                    allScalarFields()  
+                }  
+            }  
+        )  
+    }  
+    .execute()
+```
+
+这会导致如下两句SQL被生成
+
+1. 查询聚合根
+
+   ```
+   select   
+       tb_1_.ID, tb_1_.FIRST_NAME, tb_1_.LAST_NAME, tb_1_.GENDER   
+   from AUTHOR as tb_1_
+   ```
+2. 查询关联对象
+
+   ```
+   select   
+       tb_2_.AUTHOR_ID,   
+       tb_1_.ID,   
+       tb_1_.TENANT,   
+       tb_1_.NAME,   
+       tb_1_.EDITION,   
+       tb_1_.PRICE   
+   from BOOK as tb_1_   
+   inner join BOOK_AUTHOR_MAPPING as tb_2_   
+       on tb_1_.ID = tb_2_.BOOK_ID   
+   where   
+       tb_2_.AUTHOR_ID in (?, ?, ?, ?, ?)   
+   and   
+       tb_1_.TENANT = ?
+   ```
+
+## 禁用过滤器[​](#禁用过滤器 "禁用过滤器的直接链接")
+
+调用`sqlClient.filters`，在不影响当前`sqlClient`的前提下，创建新的临时SqlClient，可以达到禁用过滤器的目的。
+
+* Java
+* Kotlin
+
+```
+JSqlClient tmpSqlClient =  
+    sqlClient.filters(it -> {  
+        it  
+            .disableByTypes(TenantFilter.class);  
+    });
+```
+
+```
+val tmpSqlClient =   
+    sqlClient.filters {  
+        disableByTypes(TenantFilter::class)  
+    }
+```
+
+这里，我们得到了一个临时的的`tmpSqlClient`，基于它创建的查询将会无视上面演示的过滤器。
+
+## 更多的过滤器接口[​](#更多的过滤器接口 "更多的过滤器接口的直接链接")
+
+除了最基本的`Filter`/`KFilter`接口外，过滤器类还可以实现更多的接口，包括
+
+* `CacheableFilter`/`KCacheableFilter`
+* `AssociationIntegrityAssuranceFilter/AssociationIntegrityAssuranceFilter`
+* `ShardingFilter`/`KShardingFilter`
+
+### CacheableFilter[​](#cacheablefilter "CacheableFilter的直接链接")
+
+全局过滤器让不同的用户看到不同的数据，对于任何以被过滤类型为目标类型的关联属性而言，不同的用户自然会看到不同的关联。
+
+这会导致
+
+* 这些关联属性无法应用简单的
+
+  关联缓存
+* 依赖这些关联的计算属性也无法启用
+
+  计算缓存
+
+为此，Jimmer支持
+
+多视角缓存来解决这个问题，但代价是相关的全局过滤器必须实现`CacheableFilter`/`KCacheableFilter`接口。
+这部分内容在后续的[缓存篇/多视角缓存/支持自定义过滤器](/zh/docs/cache/multiview-cache/user-filter)一文中详细阐述，本文不做重复。
+
+### AssociationIntegrityAssuranceFilter[​](#associationintegrityassurancefilter "AssociationIntegrityAssuranceFilter的直接链接")
+
+该接口完整的名称如下：
+
+* Java: `org.babyfish.jimmer.sql.filter.AssociationIntegrityAssuranceFilter<P>`
+* Kotlin: `org.babyfish.jimmer.sql.kt.filter.KAssociationIntegrityAssuranceFilter<E>`
+
+相比于最基本的`Filter`/`KFilter`接口而言，此接口并未新加任何方法，仅用作类型标识。
+
+对于基于外键的一对一/多对一关联属性而言，即使数据中该字段被设置为非null类型并具备真实的外键约束，也可能因为过滤器的原因导致查询到的关联对象为null。
+
+因此，Jimmer规定，如果一对一/多对一关联属性的关联实体受过滤器影响，则关联属性必须声明为可空的。
+
+`AssociationIntegrityAssuranceFilter`/`KAssociationIntegrityAssuranceFilter`允许用户对数据库的数据特色做出承诺，以打破这种限制。
+
+* 首先，让过滤器类实现此接口
+
+  + Java
+  + Kotlin
+
+  ```
+  @Component  
+  public class TenantFilter   
+  implements AssociationIntegrityAssuranceFilter<TenantAwareProps> {  
+      ...  
+  }
+  ```
+
+  ```
+  @Component  
+  class TenantFilter(  
+      ...  
+  ) : KAssociationIntegrityAssuranceFilter<TenantAware> {  
+      ...  
+  }
+  ```
+* 然后，让`BookStore`继承`TenantAware`
+
+  + Java
+  + Kotlin
+
+  ```
+  @Entity  
+  public interface Book extends TenantAware {  
+      ...  
+  }
+  ```
+
+  ```
+  @Entity  
+  interface Book : TenantAware {  
+      ...  
+  }
+  ```
+* 最终，让`Book`也继承`TenantAware`，并定义不允许为null的多对一关联属性`Book.store`
+
+  + Java
+  + Kotlin
+
+  ```
+  @Entity  
+  public interface Book extends TenantAware {  
+    
+      @ManyToOne // Not null  
+      BookStore store();  
+      ...  
+  }
+  ```
+
+  ```
+  @Entity  
+  interface Book : TenantAware {  
+    
+      val store: BookStore // NotNull  
+      ...  
+  }
+  ```
+
+下面个代码分析
+
+* `Book`和`BookStore`都继承了`TenantAware`，即，关联双方受到过滤器`TenantFilter`控制
+* `TenantFilter`实现了`AssociationIntegrityAssuranceFilter`/`KAssociationIntegrityAssuranceFilter`接口。
+
+  该接口是用户对数据库数据特性的承诺，承诺只有遵循相同过滤规则的两个对象之间才会具备关联。
+  对这个例子而言，就是只有隶属于同一个租户的`BookStore`和`Book`对象才有关联，隶属于不同租户的`BookStore`和`Book`对象绝不会彼此关联。
+
+只有在用户的这种承诺下，多对一关联`Book.store`才能被设定为非null。
+
+综上所述，如果一对一/多对一关联属性的关联类型受过滤器影响，要想将此属性设置非null，除非以下两个条件同时成立：
+
+* 所有被施加于关联实体的全局过滤器都实现了`AssociationIntegrityAssuranceFilter`/`KAssociationIntegrityAssuranceFilter`接口。
+* 所有被施加于关联实体的全局过滤器也被施加于当前实体。
+
+### ShardingFilter[​](#shardingfilter "ShardingFilter的直接链接")
+
+该接口完整的名称如下：
+
+* Java: `org.babyfish.jimmer.sql.filter.ShardingFilter<P>`
+* Kotlin: `org.babyfish.jimmer.sql.kt.filter.KShardingFilter<E>`
+
+相比于最基本的`Filter`/`KFilter`接口而言，此接口并未新加任何方法，仅用作类型标识。
+
+Jimmer提供按照id *(或id集合)* 查询实体 *(或实体集合)* 的简单API。
+
+默认情况下，这类API是特殊的，它们无视全局过滤器。因为id唯一确定了对象，按照id查询对象忽略过滤器是正确的。
+
+然而，如果JDBC层面使用了[sharding-jdbc](https://shardingsphere.apache.org/document/4.1.1/en/manual/sharding-jdbc/)技术，且在过滤器中被用作筛选条件的字段就是sharding-jdbc中分库分表的字段，这时，仅仅根据id查询会导致sharding-jdbc查询多个分片，这是灾难。
+
+为了解决这个问题，让过滤器实现`ShardingFilter`接口\*(Java)*或`KShardingFilter`接口*(Kotlin)\*即可，该接口无任何行为，仅仅做类型标记。
+
+一旦过滤器继承了`ShardingFilter`或`KShardingFilter`，这类简单API将不再忽略过滤此过滤器。这可以保证最终SQL一定包含sharding-jdbc所需的sharding字段，从而实现只查询单个分片，而非所有分片都查询一次。
+
+## 多视图缓存[​](#多视图缓存 "多视图缓存的直接链接")
+
+当用户自定义过滤器和缓存一起使用时，会涉及一个叫做“多视角缓存”问题。
+
+由于我们尚未介绍缓存功能，这里仅做一次强调，具体细节请参见[缓存篇/多视角缓存](/zh/docs/cache/multiview-cache)
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/query/global-filter/user-filter.mdx)
+
+最后于 **2025年9月16日** 更新

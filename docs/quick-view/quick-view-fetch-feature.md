@@ -1,0 +1,259 @@
+# 功能介绍
+
+> 来源: https://jimmer.deno.dev/zh/docs/quick-view/fetch/feature
+
+* [快速预览 ★](/zh/docs/quick-view/)
+* [1. 查询任意形状](/zh/docs/quick-view/fetch/)
+* 功能介绍
+
+本页总览
+
+# 功能介绍
+
+## 基本用法[​](#基本用法 "基本用法的直接链接")
+
+Jimmer可以查询任意形状的数据结构，对被查询数据结构的控制能力如同GraphQL一般细腻。
+
+接下来，我们用三个场景来展示器用法
+
+### 1. 查询残缺对象[​](#1-查询残缺对象 "1. 查询残缺对象的直接链接")
+
+信息
+
+所谓残缺对象，就是指查询对象的部分属性，其信息量还不如一个孤单对象丰富。
+
+| 用法1: 查询实体 | 用法2: 查询DTO |
+| --- | --- |
+| **查询代码**  * Java * Kotlin   ``` BookTable table = Tables.BOOK_TABLE; List<Book> books = sqlClient     .createQuery(table)     .where(table.name().eq("Learning GraphQL"))     .select(         table.fetch(             Fetchers.BOOK_FETCHER                 .name()         )     )     .execute(); ```  ``` val books = sqlClient     .createQuery(Book::class) {         table.name eq "Learning GraphQL"         select(             table.fetchBy {                 name()             }         )     }     .execute() ``` | **DTO代码**  ``` export yourpackage.Book      -> package yourpackage.dto;  BookView {     id     name } ```  编译后，会自动生成Java/Kotlin类型`BookView` |
+| **查询代码**  * Java * Kotlin   ``` BookTable table = Tables.BOOK_TABLE; List<BookView> books = sqlClient     .createQuery(table)     .where(table.name().eq("Learning GraphQL"))     .select(         table.fetch(BookView.class)     )     .execute(); ```  ``` val books = sqlClient     .createQuery(Book::class) {         table.name eq "Learning GraphQL"         select(             table.fetch(BookView::class)         )     }     .execute() ``` |
+| **输出结果**  ``` [     {"id":10,"name":"Learning GraphQL"},      {"id":11,"name":"Learning GraphQL"},      {"id":12,"name":"Learning GraphQL"} ] ``` | **输出结果**  ``` [     BookView(id=10, name=Learning GraphQL),      BookView(id=11, name=Learning GraphQL),      BookView(id=12, name=Learning GraphQL) ] ``` |
+
+### 2. 附带关联对象"[​](#2-附带关联对象 "2. 附带关联对象\"的直接链接")
+
+信息
+
+选定一个实体作为聚合根，不但要查询聚合根对象，还要查询其关联对象，且深度和广度都不受限制。
+
+> 这种格式控制能力的细腻程度和GraphQL一样。
+
+| 用法1: 查询实体 | 用法2: 查询DTO |
+| --- | --- |
+| **查询代码**  * Java * Kotlin   ``` BookTable table = Tables.BOOK_TABLE; List<Book> books = sqlClient     .createQuery(table)     .where(table.name().eq("Learning GraphQL"))     .select(         table.fetch(             Fetchers.BOOK_FETCHER                 .allScalarFields()                 .store(                     Fetchers.BOOK_STORE_FETCHER                         .allScalarFields()                 )                 .authors(                     Fetchers.AUTHOR_FETCHER                         .allScalarFields()                 )         )     )     .execute(); ```  ``` val books = sqlClient     .createQuery(Book::class) {         table.name eq "Learning GraphQL"         select(             table.fetchBy {                 allScalarFields()                 store {                     allScalarFields()                 }                 authors {                     allScalarFields()                 }             }         )     }     .execute() ``` | **DTO代码**  ``` export yourpackage.Book      -> package yourpackage.dto;  BookView {     #allScalars     store {         #allScalars     }     authors {         #allScalars     } } ```  编译后，会自动生成Java/Kotlin类型`BookView` |
+| **查询代码**  * Java * Kotlin   ``` BookTable table = Tables.BOOK_TABLE; List<BookView> books = sqlClient     .createQuery(table)     .where(table.name().eq("Learning GraphQL"))     .select(         table.fetch(BookView.class)     )     .execute(); ```  ``` val books = sqlClient     .createQuery(Book::class) {         table.name eq "GraphQL"         select(             table.fetch(BookView::class)         )     }     .execute() ``` |
+| **输出结果**  ``` [     {         "id": 1,         "name": "Learning GraphQL",         "edition": 1,         "price": 50,         "store": {             "id": 1,             "name": "O'REILLY",             "website": null         },         "authors": [             {                 "id": 2,                 "firstName": "Alex",                 "lastName": "Banks",                 "gender": "MALE"             },             {                 "id": 1,                 "firstName": "Eve",                 "lastName": "Procello",                 "gender": "FEMALE"             }         ]     },     {         "id": 2,         "name": "Learning GraphQL",         "edition": 2,         "price": 55,         "store": {             "id": 1,             "name": "O'REILLY",             "website": null         },         "authors": [             {                 "id": 2,                 "firstName": "Alex",                 "lastName": "Banks",                 "gender": "MALE"             },             {                 "id": 1,                 "firstName": "Eve",                 "lastName": "Procello",                 "gender": "FEMALE"             }         ]     },     {         "id": 3,         "name": "Learning GraphQL",         "edition": 3,         "price": 51,         "store": {             "id": 1,             "name": "O'REILLY",             "website": null         },         "authors": [             {                 "id": 2,                 "firstName": "Alex",                 "lastName": "Banks",                 "gender": "MALE"             },             {                 "id": 1,                 "firstName": "Eve",                 "lastName": "Procello",                 "gender": "FEMALE"             }         ]     } ] ``` | **输出结果**  ``` [     BookView(         id=1,          name=Learning GraphQL,          edition=1,          price=50.00,          store=BookView.TargetOf_store(             id=1,              name=O'REILLY,              website=null         ),          authors=[             BookView.TargetOf_authors(                 id=2,                  firstName=Alex,                  lastName=Banks,                  gender=MALE             ),              BookView.TargetOf_authors(                 id=1,                  firstName=Eve,                  lastName=Procello,                  gender=FEMALE             )         ]     ),      BookView(         id=2,          name=Learning GraphQL,          edition=2,          price=55.00,          store=BookView.TargetOf_store(             id=1,              name=O'REILLY,              website=null         ),          authors=[             BookView.TargetOf_authors(                 id=2,                  firstName=Alex,                  lastName=Banks,                  gender=MALE             ),              BookView.TargetOf_authors(                 id=1,                  firstName=Eve,                  lastName=Procello,                  gender=FEMALE             )         ]     ),      BookView(         id=3,          name=Learning GraphQL,          edition=3,          price=51.00,          store=BookView.TargetOf_store(             id=1,              name=O'REILLY,              website=null         ),          authors=[             BookView.TargetOf_authors(                 id=2,                  firstName=Alex,                  lastName=Banks,                  gender=MALE             ),              BookView.TargetOf_authors(                 id=1,                  firstName=Eve,                  lastName=Procello,                  gender=FEMALE             )         ]     ) ] ``` |
+
+### 3. 递归查询[​](#3-递归查询 "3. 递归查询的直接链接")
+
+信息
+
+如果实体包含自关联属性，可以进行递归查询。
+
+> 截止到目前为止，GraphQL协议并不支持递归查询。
+
+| 用法1: 查询实体 | 用法2: 查询DTO |
+| --- | --- |
+| **查询代码**  * Java * Kotlin   ``` TreeNode rootNode = sqlClient     .findById(         Fetchers.TREE_NODE_FETCHER                 .allScalarFields()                 // 向上递归                 .recursiveParent() ❶                 // 向下递归                 .recursiveChildNodes() ❷         10L     ); ```  ``` val rootNode = sqlClient     .findById(         newFetcher(TreeNode::class).by {             allScalarFields()             // 向上递归             `parent*`() ❶             // 向下递归             `childNodes*`() ❷         }     ) ``` | **DTO代码**  ``` export yourpackage.TreeNode      -> package yourpackage.dto;  RecursiveTreeNodeView {     id     // 向上递归     parent* ❶     // 向下递归     childNodes* ❷ } ```  编译后，会自动生成Java/Kotlin类型`RecursiveTreeNodeView` |
+| **查询代码**  * Java * Kotlin   ``` RecursiveTreeNodeView rootNode = sqlClient     .findById(         RecursiveTreeNodeView.class,         10L     ); ```  ``` val rootNode = sqlClient     .findById(         RecursiveTreeNodeView::class,         10L     ); ``` |
+| **输出结果**  ``` {     "id": 10,     "name": "Woman",     "parent": { ❶         "id": 9,         "name": "Clothing", ❶         "parent": {             "id": 1,             "name": "Home",             "parent": null ❶         }     },     "childNodes": [ ❷         {             "id": 11,             "name": "Casual wear",             "childNodes": [ ❷                 {                     "id": 12,                     "name": "Dress",                     "childNodes": [] ❷                 },                 {                     "id": 13,                     "name": "Miniskirt",                     "childNodes": [] ❷                 },                 {                     "id": 14,                     "name": "Jeans",                     "childNodes": [] ❷                 }             ]         },         {             "id": 15,             "name": "Formal wear",             "childNodes": [ ❷                 {                     "id": 16,                     "name": "Suit",                     "childNodes": [] ❷                 },                 {                     "id": 17,                     "name": "Shirt",                     "childNodes": [] ❷                 }             ]         }     ] } ``` | **输出结果**  ``` RecursiveTreeNodeView(     id=10,      name=Woman,      parent=RecursiveTreeNodeView.TargetOf_parent( ❶         id=9,          name=Clothing,          parent=RecursiveTreeNodeView.TargetOf_parent( ❶             id=1,              name=Home,              parent=null ❶         )     ),      childNodes=[ ❷         RecursiveTreeNodeView.TargetOf_childNodes(             id=11,              name=Casual wear,              childNodes=[ ❷                 RecursiveTreeNodeView.TargetOf_childNodes(                     id=12,                      name=Dress,                      childNodes=[] ❷                 ),                  RecursiveTreeNodeView.TargetOf_childNodes(                     id=13,                      name=Miniskirt,                      childNodes=[] ❷                 ),                  RecursiveTreeNodeView.TargetOf_childNodes(                     id=14,                      name=Jeans,                      childNodes=[] ❷                 )             ]         ),          RecursiveTreeNodeView.TargetOf_childNodes(             id=15,              name=Formal wear,              childNodes=[ ❷                 RecursiveTreeNodeView.TargetOf_childNodes(                     id=16,                      name=Suit,                      childNodes=[] ❷                 ),                  RecursiveTreeNodeView.TargetOf_childNodes(                     id=17,                      name=Shirt,                      childNodes=[] ❷                 )             ]         )     ] ) ``` |
+
+## Repository代码风格[​](#repository代码风格 "Repository代码风格的直接链接")
+
+上面的代码只是为了通过三个场景展示Jimmer对被查询数据格式控制的强大，并没有对代码结构进行组织。
+
+在实际开发中  ，我们必然要以某种方式组织代码的，数据操作层面的代码应该放到`Repository`中。
+
+警告
+
+前文展示了两种用法：查询实体对象和查询DTO对象，但为了控制本文的复杂度，后文只讨论如何对查询实体对象这种情况进行代码组织。
+
+### 最简单的Repository[​](#最简单的repository "最简单的Repository的直接链接")
+
+现在让我们编写一个BookRepository，用于查询Book
+
+* Java
+* Kotlin
+
+BookRepository.java
+
+```
+@Repository  
+pubic class BookRepository {  
+  
+    private final JSqlClient sqlClient;  
+  
+    public BookRepository(JSqlClient sqlClient) {  
+        this.sqlClient = sqlClient;  
+    }  
+  
+    @Nullable  
+    public Book findBookById(long id) {  
+        return sqlClient.findById(Book.class, id);  
+    }  
+  
+    public List<Book> findBooksByName(@Nullable String name) {  
+        BookTable table = Tables.BOOK_TABLE;  
+        return sqlClient  
+            .createQuery(table)  
+            .whereIf(  
+                name != null && !name.isEmpty(),  
+                table.name().ilike(name)  
+            )  
+            .select(table);  
+    }  
+}
+```
+
+BookRepository.kt
+
+```
+@Repository  
+class BookRepository(  
+    private val sqlClient: KSqlClient  
+) {  
+  
+    fun findBookById(id: Long): Book? =  
+        sqlClient.findById(Book::class, id)  
+  
+    fun findBooksByName(name: String?): List<Book> =  
+        sqlClient  
+            .createQuery(Book::class) {  
+                name?.takeIf { it.isNotEmpty() }?.let {  
+                    where(table.name ilike name);  
+                }  
+                select(table)  
+            }  
+            .execute()  
+}
+```
+
+* Java代码中的`JSqlClient`和Kotlin代码中的`KSqlClient`，是Jimmer为Java和Kotlin开发人员提供的API入口。
+
+  实际项目中该对象为全局对象，本章节文档用于快速预览，并不会深入介绍。这里读者可以先忽略具体细节，知道`sqlClient`是API入口即可。
+* 本文的目的在于控制返回对象的格式，而并非介绍复杂查询条件 *(这部分内容在[快速预览/任意动态查询](/zh/docs/quick-view/dsl)中介绍)*。
+
+  所以这两个方法象征性地采用`Book.id`和`Book.name`作为过滤条件。
+* Jimmer是技术中立的，但是采用Spring风格的代码往往能够起到简化讲解的目的，所以，本例采用Spring风格书写。
+
+  但是，为了方便非Spring用户阅读，这里故意没有采用[Jimmer对Spring Data的支持](/zh/docs/spring/repository)，而是采用了手动注入`sqlClient`这种相对原始的写法，把Spring的干扰降到最低。
+* Java代码中的`Tables.BOOK_TABLE`是Jimmer编译时自动生成的代码。
+
+假如上述类有一个实例`bookRepository`，以`findBookById`为例：
+
+* Java
+* Kotlin
+
+```
+System.out.println(bookRepository.findBookById(1L));
+```
+
+```
+println(bookRepository.findBookById(1L));
+```
+
+得到如下的输出结果:
+
+```
+{  
+  "id" : 1,  
+  "name" : "Learning GraphQL",  
+  "edition" : 1,  
+  "price" : 50.00,  
+  "store" : {  
+    "id" : 1  
+  }  
+}
+```
+
+输出格式是固定的，和当前的要讨论的话题“查询任意形状的数据结构”不符，因此我们需要改进`BookRepository`。
+
+### 改进后的Repository[​](#改进后的repository "改进后的Repository的直接链接")
+
+让我们对之前的`BookRepository`类稍加改进
+
+* Java
+* Kotlin
+
+BookRepository.java
+
+```
+@Repository  
+pubic class BookRepository {  
+  
+    private final JSqlClient sqlClient;  
+  
+    public BookRepository(JSqlClient sqlClient) {  
+        this.sqlClient = sqlClient;  
+    }  
+  
+    @Nullable  
+    public Book findBookById(  
+        long id,  
+        Fetcher<Book> fetcher  
+    ) {  
+        return sqlClient.findById(  
+            fetcher,  
+            id  
+        );  
+    }  
+  
+    public List<Book> findBooksByName(  
+        @Nullable String name,  
+        @Nullable Fetcher<Book> fetcher  
+    ) {  
+        BookTable table = Tables.BOOK_TABLE;  
+        return sqlClient  
+            .createQuery(table)  
+            .whereIf(  
+                name != null && !name.isEmpty(),  
+                table.name().ilike(name)  
+            )  
+            .select(  
+                table.fetch(fetcher)  
+            );  
+    }  
+}
+```
+
+BookRepository.kt
+
+```
+@Repository  
+class BookRepository(  
+    private val sqlClient: KSqlClient  
+) {  
+  
+    fun findBookById(  
+        id: Long,  
+        fetcher: Fetcher<Book>  
+    ): Book? =  
+        sqlClient.findById(  
+            fetcher,  
+            id  
+        )  
+  
+    fun findBooksByName(  
+        name: String? = null,  
+        fetcher: Fetcher<Book>? = null  
+    ): List<Book> =  
+        sqlClient  
+            .createQuery(Book::class) {  
+                name?.takeIf { it.isNotEmpty() }?.let {  
+                    where(table.name ilike name);  
+                }  
+                select(  
+                    table.fetch(fetcher)  
+                )  
+            }  
+            .execute()  
+}
+```
+
+在这个例子中，我们为每个查询方法添加了一个类型为`Fetcher<Book>`的参数，我们可以通过它灵活控制被查询对象的格式 *(即，被查询的数据结构的形状)*
+
+提示
+
+这是推荐的使用方式，Repository仅负责筛选、排序、分页等操作，但不控制返回数据的格式，而是通过`Fetcher<E>`参数将数据格式的控制权暴露出去，让更上层的业务逻辑来决定。
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/quick-view/fetch/feature.mdx)
+
+最后于 **2025年9月16日** 更新
