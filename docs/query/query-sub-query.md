@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/query/sub-query
 
-* [查询篇](/zh/docs/query/)
-* 子查询
+- [查询篇](/zh/docs/query/)
+- 子查询
 
 本页总览
 
@@ -13,465 +13,463 @@
 
 ### 基于单列的IN表达式[​](#基于单列的in表达式 "基于单列的IN表达式的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;  
-  
-List<Book> books = sqlClient  
-    .createQuery(book)  
-    .where(  
-        book.id().in(sqlClient  
-            .createSubQuery(author)  
-            .where(author.firstName().eq("Alex"))  
-            .select(author.books().id())  
-        )  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .where(
+        book.id().in(sqlClient
+            .createSubQuery(author)
+            .where(author.firstName().eq("Alex"))
+            .select(author.books().id())
+        )
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(   
-            table.id valueIn subQuery(Author::class) {  
-                where(table.firstName eq "Alex")  
-                select(table.books.id)  
-            }  
-        )  
-        select(table)      
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            table.id valueIn subQuery(Author::class) {
+                where(table.firstName eq "Alex")
+                select(table.books.id)
+            }
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where   
-    tb_1_.ID in (  
-        select   
-            tb_3_.BOOK_ID   
-        from AUTHOR as tb_2_   
-        inner join BOOK_AUTHOR_MAPPING as tb_3_   
-            on tb_2_.ID = tb_3_.AUTHOR_ID   
-        where   
-            tb_2_.FIRST_NAME = ?  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where
+    tb_1_.ID in (
+        select
+            tb_3_.BOOK_ID
+        from AUTHOR as tb_2_
+        inner join BOOK_AUTHOR_MAPPING as tb_3_
+            on tb_2_.ID = tb_3_.AUTHOR_ID
+        where
+            tb_2_.FIRST_NAME = ?
     )
+
 ```
 
 ### 基于多列的IN表达式[​](#基于多列的in表达式 "基于多列的IN表达式的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-  
-List<Book> newestBooks = sqlClient  
-    .createQuery(book)  
-    .where(  
-        Expression.tuple(  
-            book.name(),  
-            book.edition()  
-        ).in(sqlClient  
-            .createSubQuery(book)  
-            .groupBy(book.name())  
-            .select(  
-                book.name(),  
-                book.edition().max()  
-            )  
-        )  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+List<Book> newestBooks = sqlClient
+    .createQuery(book)
+    .where(
+        Expression.tuple(
+            book.name(),
+            book.edition()
+        ).in(sqlClient
+            .createSubQuery(book)
+            .groupBy(book.name())
+            .select(
+                book.name(),
+                book.edition().max()
+            )
+        )
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val newestBooks = sqlClient  
-    .createQuery(Book::class) {  
-        where(   
-            tuple(  
-                table.name,   
-                table.edition  
-            ) valueIn subQuery(Book::class) {  
-                groupBy(table.name)  
-                select(  
-                    table.name,  
-                    max(table.edition).asNonNull()  
-                )  
-            }  
-        )  
-        select(table)  
-    }  
+
+```val newestbooks = sqlclient
+    .createQuery(Book::class) {
+        where(
+            tuple(
+                table.name,
+                table.edition
+            ) valueIn subQuery(Book::class) {
+                groupBy(table.name)
+                select(
+                    table.name,
+                    max(table.edition).asNonNull()
+                )
+            }
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where   
-    (tb_1_.NAME, tb_1_.EDITION) in (  
-        select   
-            tb_2_.NAME,   
-            max(tb_2_.EDITION)   
-            from BOOK as tb_2_   
-            group by tb_2_.NAME  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where
+    (tb_1_.NAME, tb_1_.EDITION) in (
+        select
+            tb_2_.NAME,
+            max(tb_2_.EDITION)
+            from BOOK as tb_2_
+            group by tb_2_.NAME
     )
+
 ```
 
 ### 将子查询视为简单值[​](#将子查询视为简单值 "将子查询视为简单值的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-  
-List<Book> newestBooks = sqlClient  
-    .createQuery(book)  
-    .where(  
-        book.price().gt(sqlClient  
-            .createSubQuery(book)  
-            .groupBy(book.name())  
-            .select(  
-                book  
-                    .price()  
-                    .avg()  
-                    .coalesce(BigDecimal.ZERO)  
-            )  
-        )  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+List<Book> newestBooks = sqlClient
+    .createQuery(book)
+    .where(
+        book.price().gt(sqlClient
+            .createSubQuery(book)
+            .groupBy(book.name())
+            .select(
+                book
+                    .price()
+                    .avg()
+                    .coalesce(BigDecimal.ZERO)
+            )
+        )
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(   
-            table.price gt subQuery(Book::class) {  
-                select(  
-                    avg(table.price)  
-                        .coalesce(BigDecimal.ZERO)  
-                )  
-            }  
-        )  
-        select(table)  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            table.price gt subQuery(Book::class) {
+                select(
+                    avg(table.price)
+                        .coalesce(BigDecimal.ZERO)
+                )
+            }
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where   
-    tb_1_.PRICE > (  
-        select   
-            coalesce(avg(tb_2_.PRICE), ?)   
-        from BOOK as tb_2_  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where
+    tb_1_.PRICE > (
+        select
+            coalesce(avg(tb_2_.PRICE), ?)
+        from BOOK as tb_2_
     )
+
 ```
 
 ### 在select和orderBy子句中使用子查询[​](#在select和orderby子句中使用子查询 "在select和orderBy子句中使用子查询的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookStoreTable store = Tables.BOOK_STORE_TABLE;  
-BookTable book = Tables.BOOK_TABLE;  
-  
-MutableRootQuery<BookStoreTable> query =  
-    sqlClient.createQuery(store);  
-TypedSubQuery<BigDecimal> subQuery =  
-    sqlClient  
-        .createSubQuery(book)  
-        .where(book.store().eq(store))  
-        .select(  
-            book  
-                .price()  
-                .avg()  
-                .coalesce(BigDecimal.ZERO)  
-        );  
-List<Tuple2<BookStore, BigDecimal>> storeAvgPriceTuples =  
-    query  
-          
-        .orderBy(  
-            subQuery.desc()  
-        )  
-        .select(  
-            store,   
-            subQuery  
-        )  
+```bookstoretable store = tables.book_store_table;
+BookTable book = Tables.BOOK_TABLE;
+
+MutableRootQuery<BookStoreTable> query =
+    sqlClient.createQuery(store);
+TypedSubQuery<BigDecimal> subQuery =
+    sqlClient
+        .createSubQuery(book)
+        .where(book.store().eq(store))
+        .select(
+            book
+                .price()
+                .avg()
+                .coalesce(BigDecimal.ZERO)
+        );
+List<Tuple2<BookStore, BigDecimal>> storeAvgPriceTuples =
+    query
+
+        .orderBy(
+            subQuery.desc()
+        )
+        .select(
+            store,
+            subQuery
+        )
         .execute();
-```
 
 ```
-val storeAvgPriceTuples = sqlClient  
-    .createQuery(BookStore::class) {  
-        val avgPriceSubQuery = subQuery(Book::class) {  
-            where(table.store eq parentTable)  
-            select(avg(table.price))  
-        }  
-          
-        orderBy(  
-            avgPriceSubQuery.desc()  
-        )  
-        select(  
-            table,  
-            avgPriceSubQuery  
-        )  
-    }  
+
+```val storeavgpricetuples = sqlclient
+    .createQuery(BookStore::class) {
+        val avgPriceSubQuery = subQuery(Book::class) {
+            where(table.store eq parentTable)
+            select(avg(table.price))
+        }
+
+        orderBy(
+            avgPriceSubQuery.desc()
+        )
+        select(
+            table,
+            avgPriceSubQuery
+        )
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.WEBSITE,   
-    (  
-        select coalesce(avg(tb_2_.PRICE), ?)   
-        from BOOK as tb_2_  
-    )   
-from BOOK_STORE as tb_1_   
-order by (  
-    select coalesce(avg(tb_2_.PRICE), ?)   
-    from BOOK as tb_2_  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.WEBSITE,
+    (
+        select coalesce(avg(tb_2_.PRICE), ?)
+        from BOOK as tb_2_
+    )
+from BOOK_STORE as tb_1_
+order by (
+    select coalesce(avg(tb_2_.PRICE), ?)
+    from BOOK as tb_2_
 ) desc
+
 ```
 
 ### 使用any运算符[​](#使用any运算符 "使用any运算符的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;  
-  
-List<Book> books = sqlClient  
-    .createQuery(book)  
-    .where(  
-        book.id().eq(sqlClient  
-            .createSubQuery(author)  
-            .where(  
-                author.firstName().in(  
-                    Arrays.asList("Alex", "Bill")  
-                )  
-            )  
-            .select(author.books().id())  
-            .any()  
-        )  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .where(
+        book.id().eq(sqlClient
+            .createSubQuery(author)
+            .where(
+                author.firstName().in(
+                    Arrays.asList("Alex", "Bill")
+                )
+            )
+            .select(author.books().id())
+            .any()
+        )
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(  
-            table.id eq any(  
-                subQuery(Author::class) {  
-                    where(  
-                        table.firstName valueIn listOf(  
-                            "Alex",  
-                            "Bill"  
-                        )  
-                    )  
-                    select(table.id)  
-                }  
-            )  
-        )  
-        select(table)  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            table.id eq any(
+                subQuery(Author::class) {
+                    where(
+                        table.firstName valueIn listOf(
+                            "Alex",
+                            "Bill"
+                        )
+                    )
+                    select(table.id)
+                }
+            )
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where tb_1_.ID =   
-    any(  
-        select   
-            tb_3_.BOOK_ID   
-        from AUTHOR as tb_2_   
-        inner join BOOK_AUTHOR_MAPPING as tb_3_   
-            on tb_2_.ID = tb_3_.AUTHOR_ID   
-        where   
-            tb_2_.FIRST_NAME in (?, ?)  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where tb_1_.ID =
+    any(
+        select
+            tb_3_.BOOK_ID
+        from AUTHOR as tb_2_
+        inner join BOOK_AUTHOR_MAPPING as tb_3_
+            on tb_2_.ID = tb_3_.AUTHOR_ID
+        where
+            tb_2_.FIRST_NAME in (?, ?)
     )
+
 ```
 
 ### 使用all运算符[​](#使用all运算符 "使用all运算符的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;  
-  
-List<Book> books = sqlClient  
-    .createQuery(book)  
-    .where(  
-        book.id().ne(sqlClient  
-            .createSubQuery(author)  
-            .where(  
-                author.firstName().in(  
-                    Arrays.asList("Alex", "Bill")  
-                )  
-            )  
-            .select(author.books().id())  
-            .all()  
-        )  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .where(
+        book.id().ne(sqlClient
+            .createSubQuery(author)
+            .where(
+                author.firstName().in(
+                    Arrays.asList("Alex", "Bill")
+                )
+            )
+            .select(author.books().id())
+            .all()
+        )
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(  
-            table.id ne all(  
-                subQuery(Author::class) {  
-                    where(  
-                        table.firstName valueIn listOf(  
-                            "Alex",  
-                            "Bill"  
-                        )  
-                    )  
-                    select(table.id)  
-                }  
-            )  
-        )  
-        select(table)  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            table.id ne all(
+                subQuery(Author::class) {
+                    where(
+                        table.firstName valueIn listOf(
+                            "Alex",
+                            "Bill"
+                        )
+                    )
+                    select(table.id)
+                }
+            )
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where tb_1_.ID =   
-    all(  
-        select   
-            tb_3_.BOOK_ID   
-        from AUTHOR as tb_2_   
-        inner join BOOK_AUTHOR_MAPPING as tb_3_   
-            on tb_2_.ID = tb_3_.AUTHOR_ID   
-        where   
-            tb_2_.FIRST_NAME in (?, ?)  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where tb_1_.ID =
+    all(
+        select
+            tb_3_.BOOK_ID
+        from AUTHOR as tb_2_
+        inner join BOOK_AUTHOR_MAPPING as tb_3_
+            on tb_2_.ID = tb_3_.AUTHOR_ID
+        where
+            tb_2_.FIRST_NAME in (?, ?)
     )
+
 ```
 
 ### 使用exists运算符[​](#使用exists运算符 "使用exists运算符的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;  
-  
-List<Book> books = sqlClient  
-    .createQuery(book)  
-    .where(sqlClient  
-        .createSubQuery(author)  
-        .where(  
-            author.books().eq(book),  
-            author.firstName().eq("Alex")  
-        )  
-        .select(author)  
-        .exists()  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .where(sqlClient
+        .createSubQuery(author)
+        .where(
+            author.books().eq(book),
+            author.firstName().eq("Alex")
+        )
+        .select(author)
+        .exists()
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(  
-            exists(  
-                subQuery(Author::class) {  
-                    where(  
-                        table.books eq parentTable,  
-                        table.firstName eq "Alex"  
-                    )  
-                    select(table)  
-                }  
-            )  
-        )  
-        select(table)  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            exists(
+                subQuery(Author::class) {
+                    where(
+                        table.books eq parentTable,
+                        table.firstName eq "Alex"
+                    )
+                    select(table)
+                }
+            )
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL如下
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where   
-    exists (  
-        select   
-            1   
-        from AUTHOR as tb_2_   
-        inner join BOOK_AUTHOR_MAPPING as tb_3_   
-            on tb_2_.ID = tb_3_.AUTHOR_ID   
-        where   
-            tb_1_.ID = tb_3_.BOOK_ID   
-        and   
-            tb_2_.FIRST_NAME = ?  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where
+    exists (
+        select
+            1
+        from AUTHOR as tb_2_
+        inner join BOOK_AUTHOR_MAPPING as tb_3_
+            on tb_2_.ID = tb_3_.AUTHOR_ID
+        where
+            tb_1_.ID = tb_3_.BOOK_ID
+        and
+            tb_2_.FIRST_NAME = ?
     )
+
 ```
 
 信息
@@ -488,69 +486,69 @@ where
 
 因此，jimmer-sql支持无类型子查询(Wild sub query)，和普通子查询不同，无类型子查询实现中，不再需要最后那一句select方法调用，即，不需要返回类型。
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable book = Tables.BOOK_TABLE;  
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;  
-  
-List<Book> books = sqlClient  
-    .createQuery(book)  
-    .where(sqlClient  
-        .createSubQuery(author)  
-        .where(  
-            author.books().eq(book),  
-            author.firstName().eq("Alex")  
-        )  
-        // 此处无select  
-        .exists()  
-    )  
-    .select(book)  
+```booktable book = tables.book_table;
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .where(sqlClient
+        .createSubQuery(author)
+        .where(
+            author.books().eq(book),
+            author.firstName().eq("Alex")
+        )
+        // 此处无select
+        .exists()
+    )
+    .select(book)
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(  
-            exists(  
-                wildSubQuery(Author::class) {  
-                    where(  
-                        table.books eq parentTable,  
-                        table.firstName eq "Alex"  
-                    )  
-                    // 此处无select  
-                }  
-            )  
-        )  
-        select(table)  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(
+            exists(
+                wildSubQuery(Author::class) {
+                    where(
+                        table.books eq parentTable,
+                        table.firstName eq "Alex"
+                    )
+                    // 此处无select
+                }
+            )
+        )
+        select(table)
+    }
     .execute()
+
 ```
 
 最终生成的SQL不变，仍然是
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.NAME,   
-    tb_1_.EDITION,   
-    tb_1_.PRICE,   
-    tb_1_.STORE_ID   
-from BOOK as tb_1_   
-where   
-    exists (  
-        select   
-            1   
-        from AUTHOR as tb_2_   
-        inner join BOOK_AUTHOR_MAPPING as tb_3_   
-            on tb_2_.ID = tb_3_.AUTHOR_ID   
-        where   
-            tb_1_.ID = tb_3_.BOOK_ID   
-        and   
-            tb_2_.FIRST_NAME = ?  
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK as tb_1_
+where
+    exists (
+        select
+            1
+        from AUTHOR as tb_2_
+        inner join BOOK_AUTHOR_MAPPING as tb_3_
+            on tb_2_.ID = tb_3_.AUTHOR_ID
+        where
+            tb_1_.ID = tb_3_.BOOK_ID
+        and
+            tb_2_.FIRST_NAME = ?
     )
+
 ```
 
 信息

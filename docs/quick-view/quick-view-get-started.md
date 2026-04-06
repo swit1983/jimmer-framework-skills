@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/get-started/
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* 快速上手
+- [快速预览 ★](/zh/docs/quick-view/)
+- 快速上手
 
 # 快速上手
 

@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/graphql/mutation
 
-* [GraphQL篇](/zh/docs/graphql/)
-* Mutation
+- [GraphQL篇](/zh/docs/graphql/)
+- Mutation
 
 本页总览
 
@@ -17,33 +17,33 @@
 
 以附带例子中的GraphQL声明文件为例[schema.graphqls](https://github.com/babyfish-ct/jimmer-examples/blob/main/java/jimmer-sql-graphql/service/src/main/resources/graphql/schema.graphqls)
 
-```
-type Book implements CommonEntity { ❶  
-    id: Long!  
-    name: String!  
-    edition: Int!  
-    price: BigDecimal!  
-    store: BookStore  
-    authors: [Author!]!  
-    createdTime: LocalDateTime!  
-    modifiedTime: LocalDateTime!  
-    tenant: String!  
-}  
-  
-input BookInput { ❷  
-    id: Long  
-    name: String!  
-    edition: Int  
-    price: BigDecimal!  
-    storeId: Long  
-    authorIds: [Long!]!  
-}  
-  
+```type book implements commonentity { ❶
+    id: Long!
+    name: String!
+    edition: Int!
+    price: BigDecimal!
+    store: BookStore
+    authors: [Author!]!
+    createdTime: LocalDateTime!
+    modifiedTime: LocalDateTime!
+    tenant: String!
+}
+
+input BookInput { ❷
+    id: Long
+    name: String!
+    edition: Int
+    price: BigDecimal!
+    storeId: Long
+    authorIds: [Long!]!
+}
+
 ...省略其他代码...
+
 ```
 
-* ❶ `type`关键字声明的类型是表达任意形状数据结构的动态类型，用作GraphQL的输出类型
-* ❷ `input`关键字声明的类型是表达固定形状数据结构的静态类型，用作GraphQL的输入类型
+- ❶ `type`关键字声明的类型是表达任意形状数据结构的动态类型，用作GraphQL的输出类型
+- ❷ `input`关键字声明的类型是表达固定形状数据结构的静态类型，用作GraphQL的输入类型
 
 ## 定义Jimmer Input DTO[​](#定义jimmer-input-dto "定义Jimmer Input DTO的直接链接")
 
@@ -51,8 +51,8 @@ Jimmer的Input DTO在[保存指令/InputDTO](/zh/docs/mutation/save-command/inpu
 
 Jimmer提供了两种定义Input DTO的方式
 
-* [利用DTO语言自动生成Input DTO](/zh/docs/object/view/dto-language)
-* [基于MapStruct手动定义Input DTO](/zh/docs/object/view/mapstruct)
+- [利用DTO语言自动生成Input DTO](/zh/docs/object/view/dto-language)
+- [基于MapStruct手动定义Input DTO](/zh/docs/object/view/mapstruct)
 
 采用DTO语言可以非常高效地达到我们的目标，所以本文采用这种方式。
 
@@ -63,141 +63,138 @@ Jimmer提供了两种定义Input DTO的方式
 
    Book.dto
 
-   ```
-   input BookInput {  
-         
-       #allScalars(Book)  
-     
-       id(store)  
-     
-       id(authors) as authorIds  
-   }  
-     
+   ```input bookinput {
+       #allScalars(Book)
+
+       id(store)
+
+       id(authors) as authorIds
+   }
+
    ...省略其他DTO定义...
-   ```
+
+```
 
 编译完成后，将会自动生成如下Input DTO
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookInput.java
 
-```
-@GeneratedBy(file = "<your_project>/src/main/dto/Book.dto")  
-public class BookInput implements Input<Book> { ❶  
-  
-    @Nullable  
-    private Long id;  
-  
-    private String name;  
-  
-    private int edition;  
-  
-    private BigDecimal price;  
-  
-    @Nullable  
-    private Long storeId;  
-  
-    private List<Long> authorIds;  
-  
-    @Override  
-    public Book toEntity() { ❷  
-        ...略...  
-    }  
-  
-    ...省略其他成员...  
+```@generatedby(file = "<your_project>/src/main/dto/book.dto")
+public class BookInput implements Input<Book> { ❶
+
+    @Nullable
+    private Long id;
+
+    private String name;
+
+    private int edition;
+
+    private BigDecimal price;
+
+    @Nullable
+    private Long storeId;
+
+    private List<Long> authorIds;
+
+    @Override
+    public Book toEntity() { ❷
+        ...略...
+    }
+
+    ...省略其他成员...
 }
+
 ```
 
 BookInput.kt
 
-```
-@GeneratedBy(file = "<your_project>/src/main/dto/Book.dto")  
-data class BookInput(  
-    val id: Long? = null,  
-    val name: String = "",  
-    val edition: Int = 0,  
-    val price: BigDecimal,  
-    val storeId: Long? = null,  
-    val authorIds: List<Long> = emptyList()  
-): Input<Book> { ❶  
-  
-    override fun toEntity(): Book = ❷  
-        ...略...  
-      
-    ...省略其他成员...  
+```@generatedby(file = "<your_project>/src/main/dto/book.dto")
+data class BookInput(
+    val id: Long? = null,
+    val name: String = "",
+    val edition: Int = 0,
+    val price: BigDecimal,
+    val storeId: Long? = null,
+    val authorIds: List<Long> = emptyList()
+): Input<Book> { ❶
+
+    override fun toEntity(): Book = ❷
+        ...略...
+
+    ...省略其他成员...
 }
+
 ```
 
-* ❶ `BookInput`类实现了接口`org.babyfish.jimmer.Input`，该接口支持`toEntity`方法，可以将当前Input DTO对象转化为Jimmer动态实体对象。
-* ❷ 实现`Input.toEntity`方法
+- ❶ `BookInput`类实现了接口`org.babyfish.jimmer.Input`，该接口支持`toEntity`方法，可以将当前Input DTO对象转化为Jimmer动态实体对象。
+- ❷ 实现`Input.toEntity`方法
 
 ## 实现GraphQL mutation[​](#实现graphql-mutation "实现GraphQL mutation的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookStoreService.java
 
-```
-package com.example.business;  
-  
-import org.springframework.graphql.data.method.annotation.Argument;  
-import org.springframework.graphql.data.method.annotation.MutationMapping;  
-import org.springframework.stereotype.Controller;  
-  
-...省略其他导入...  
-  
-@Controller  
-public class BookStoreService {  
-  
-    private final BookStoreRepository bookStoreRepository;  
-  
-    public BookStoreService(BookStoreRepository bookStoreRepository) {  
-        this.bookStoreRepository = bookStoreRepository;  
-    }  
-  
-    @MutationMapping ❶  
-    @Transactional  
-    public Book saveBook(  
-        @Argument BookInput input ❷  
-    ) {  
-        // `save(input)`是`save(input.toEntity())`的简写方式  
-        return bookRepository.save(input); ❸  
-    }  
+```package com.example.business;
+import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
+import org.springframework.stereotype.Controller;
+
+...省略其他导入...
+
+@Controller
+public class BookStoreService {
+
+    private final BookStoreRepository bookStoreRepository;
+
+    public BookStoreService(BookStoreRepository bookStoreRepository) {
+        this.bookStoreRepository = bookStoreRepository;
+    }
+
+    @MutationMapping ❶
+    @Transactional
+    public Book saveBook(
+        @Argument BookInput input ❷
+    ) {
+        // `save(input)`是`save(input.toEntity())`的简写方式
+        return bookRepository.save(input); ❸
+    }
 }
+
 ```
 
 BookStoreService.kt
 
-```
-package com.example.business  
-  
-import org.springframework.graphql.data.method.annotation.Argument  
-import org.springframework.graphql.data.method.annotation.MutationMapping  
-import org.springframework.stereotype.Controller  
-  
-...省略其他导入...  
-  
-@Controller  
-class BookStoreService(  
-    private val bookStoreRepository: BookStoreRepository  
-) {  
-  
-    @MutationMapping ❶  
-    @Transactional  
-    fun saveBook(  
-        @Argument input: BookInput ❷  
-    ): Book =  
-        // `save(input)`是`save(input.toEntity())`的简写方式  
-        bookRepository.save(input) ❸  
+```package com.example.business
+import org.springframework.graphql.data.method.annotation.Argument
+import org.springframework.graphql.data.method.annotation.MutationMapping
+import org.springframework.stereotype.Controller
+
+...省略其他导入...
+
+@Controller
+class BookStoreService(
+    private val bookStoreRepository: BookStoreRepository
+) {
+
+    @MutationMapping ❶
+    @Transactional
+    fun saveBook(
+        @Argument input: BookInput ❷
+    ): Book =
+        // `save(input)`是`save(input.toEntity())`的简写方式
+        bookRepository.save(input) ❸
 }
+
 ```
 
-* ❶ 使用注解`@org.springframework.graphql.data.method.annotation.MutationMapping`
-* ❷ 使用静态Input DTO类型`BookInput`，让用户只能传递规定形状的数据结构，以符合[GraphQLInput](https://graphql.org/graphql-js/mutations-and-input-types/)的规范
-* ❸ [保存指令](/zh/docs/mutation/save-command)，一句话保存任意形状的数据结构
+- ❶ 使用注解`@org.springframework.graphql.data.method.annotation.MutationMapping`
+- ❷ 使用静态Input DTO类型`BookInput`，让用户只能传递规定形状的数据结构，以符合[GraphQLInput](https://graphql.org/graphql-js/mutations-and-input-types/)的规范
+- ❸ [保存指令](/zh/docs/mutation/save-command)，一句话保存任意形状的数据结构
 
   这里的`bookRepository.save(input)`，其实是`bookRepository.save(input.toEntity())`的简写。
 

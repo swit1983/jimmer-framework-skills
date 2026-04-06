@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/connection-manager
 
-* [配置篇](/zh/docs/configuration/)
-* Connection Manager
+- [配置篇](/zh/docs/configuration/)
+- Connection Manager
 
 本页总览
 
@@ -13,91 +13,87 @@
 
 Jimmer中一切可执行的语句和指令都支持两种执行模式：
 
-* 基于用户指定的JDBC连接执行
-* 由Jimmer自动决定基于某个JDBC连接执行
+- 基于用户指定的JDBC连接执行
+- 由Jimmer自动决定基于某个JDBC连接执行
 
 这里，以`Executable`(Java)或`KExecutable`(kotlin)接口为例
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Executable.java
 
-```
-package org.babyfish.jimmer.sql.ast;  
-  
-import java.sql.Connection;  
-  
-public interface Executable<R> {  
-  
-    R execute();  
-  
-    R execute(Connection con);  
+```package org.babyfish.jimmer.sql.ast;
+import java.sql.Connection;
+
+public interface Executable<R> {
+
+    R execute();
+
+    R execute(Connection con);
 }
+
 ```
 
 KExecutable.kt
 
-```
-package org.babyfish.jimmer.sql.kt  
-  
-import java.sql.Connection  
-  
-interface KExecutable<R> {  
-    fun execute(con: Connection? = null): R  
+```package org.babyfish.jimmer.sql.kt
+import java.sql.Connection
+
+interface KExecutable<R> {
+    fun execute(con: Connection? = null): R
 }
+
 ```
 
-* `execute(Connection)`：在用户指定的JDBC连接上执行。
+- `execute(Connection)`：在用户指定的JDBC连接上执行。
 
   以查询为例：
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  BookTable book = Tables.BOOK_TABLE;  
-    
-  List<Book> books = sqlClient  
-      .createQuery(book)  
-      .select(book)  
+  ```booktable book = tables.book_table;
+  List<Book> books = sqlClient
+      .createQuery(book)
+      .select(book)
       .execute(con);
-  ```
 
-  ```
-  val books = sqlClient  
-      .createQuery(Book::class) {  
-          select(table)  
-      }  
+```
+
+  ```val books = sqlclient
+      .createQuery(Book::class) {
+          select(table)
+      }
       .execute(con)
-  ```
+
+```
 
   信息
 
   对这种使用方式而言，无需对SqlClient做出特别配置。
-* `execute()`或`execute(null)`：由Jimmer自主决定在某个JDBC连接上执行。
+- `execute()`或`execute(null)`：由Jimmer自主决定在某个JDBC连接上执行。
 
   以查询为例：
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  BookTable book = Tables.BOOK_TABLE;  
-    
-  List<Book> books = sqlClient  
-      .createQuery(book)  
-      .select(book)  
+  ```booktable book = tables.book_table;
+  List<Book> books = sqlClient
+      .createQuery(book)
+      .select(book)
       .execute();
-  ```
 
-  ```
-  val books = sqlClient  
-      .createQuery(Book::class) {  
-          select(table)  
-      }  
+```
+
+  ```val books = sqlclient
+      .createQuery(Book::class) {
+          select(table)
+      }
       .execute()
-  ```
+
+```
 
   信息
 
@@ -107,37 +103,36 @@ interface KExecutable<R> {
 
 ## 简单的ConnectionManager[​](#简单的connectionmanager "简单的ConnectionManager的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-javax.sql.DataSource dataSource = ...;  
-  
-JSqlClient sqlClient = JSqlClient  
-    .newBuilder()  
-    .setConnectionManager(  
-        ConnectionManager  
-            .simpleConnectionManager(dataSource)  
-    )  
+```javax.sql.datasource datasource = ...;
+JSqlClient sqlClient = JSqlClient
+    .newBuilder()
+    .setConnectionManager(
+        ConnectionManager
+            .simpleConnectionManager(dataSource)
+    )
     .build();
-```
 
 ```
-//    val dataSource: DataSource = DriverManagerDataSource().apply {  
-//        setDriverClassName("com.mysql.cj.jdbc.Driver")  
-//        url = "jdbc:mysql://localhost:3306/jimmer_demo"  
-//        username = "root"  
-//        password = "" // 输入你自己的密码  
-//    }  
-  
-val sqlClient = newKSqlClient {  
-        setConnectionManager(  
-            ConnectionManager.simpleConnectionManager(dataSource)  
-        )  
-        setDatabaseNamingStrategy(  
-            //DefaultDatabaseNamingStrategy.LOWER_CASE  
-        )  
+
+```//    val datasource: datasource = drivermanagerdatasource().apply {
+//        setDriverClassName("com.mysql.cj.jdbc.Driver")
+//        url = "jdbc:mysql://localhost:3306/jimmer_demo"
+//        username = "root"
+//        password = "" // 输入你自己的密码
+//    }
+
+val sqlClient = newKSqlClient {
+        setConnectionManager(
+            ConnectionManager.simpleConnectionManager(dataSource)
+        )
+        setDatabaseNamingStrategy(
+            //DefaultDatabaseNamingStrategy.LOWER_CASE
+        )
     }
+
 ```
 
 危险

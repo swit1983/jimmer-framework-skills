@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/spring/transaction
 
-* [Spring篇](/zh/docs/spring/)
-* 整合Spring事务
+- [Spring篇](/zh/docs/spring/)
+- 整合Spring事务
 
 本页总览
 
@@ -13,8 +13,8 @@
 
 Jimmer中所有数据库操作API都有两种执行方式：
 
-* 在指定的JDBC连接上执行
-* 无需指定JDBC连接即可执行，但需要为Jimmer配置`ConnectionManager`，教会Jimmer如何租借和归还连接。
+- 在指定的JDBC连接上执行
+- 无需指定JDBC连接即可执行，但需要为Jimmer配置`ConnectionManager`，教会Jimmer如何租借和归还连接。
 
 请参考
 
@@ -32,55 +32,55 @@ Jimmer中所有数据库操作API都有两种执行方式：
 
 开发人员需要创建`JSqlClient/KSqlClient`，并设置其`ConnectionManager`，在`ConnectionManager`中，利用Spring的`org.springframework.jdbc.datasource.DataSourceUtils`打开和关闭连接。
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Book.java
 
-```
-@Bean  
-public JSqlClient sqlClient(DataSource dataSource) {  
-    return JSqlClient.newBuilder()  
-        .setConnectionManager(  
-            new ConnectionManager() {  
-                @Override  
-                public <R> R execute(  
-                    Function<Connection, R> block  
-                ) {  
-                    Connection con = DataSourceUtils  
-                        .getConnection(dataSource);  
-                    try {  
-                        return block.apply(con);  
-                    } finally {  
-                        DataSourceUtils  
-                            .releaseConnection(con, dataSource);  
-                    }  
-                }  
-            }  
-        )  
-        ...省略其他配置...  
-        .build();  
+```@bean
+public JSqlClient sqlClient(DataSource dataSource) {
+    return JSqlClient.newBuilder()
+        .setConnectionManager(
+            new ConnectionManager() {
+                @Override
+                public <R> R execute(
+                    Function<Connection, R> block
+                ) {
+                    Connection con = DataSourceUtils
+                        .getConnection(dataSource);
+                    try {
+                        return block.apply(con);
+                    } finally {
+                        DataSourceUtils
+                            .releaseConnection(con, dataSource);
+                    }
+                }
+            }
+        )
+        ...省略其他配置...
+        .build();
 }
+
 ```
 
 Book.kt
 
-```
-@Bean  
-fun sqlClient(dataSource: DataSource): KSqlClient =  
-    newKSqlClient {  
-        setConnectionManager {  
-            val con = DataSourceUtils  
-                .getConnection(dataSource)  
-            try {  
-                proceed(con)  
-            } finally {  
-                DataSourceUtils  
-                    .releaseConnection(con, dataSource)  
-            }  
-        }  
-        ...省略其他配置...  
+```@bean
+fun sqlClient(dataSource: DataSource): KSqlClient =
+    newKSqlClient {
+        setConnectionManager {
+            val con = DataSourceUtils
+                .getConnection(dataSource)
+            try {
+                proceed(con)
+            } finally {
+                DataSourceUtils
+                    .releaseConnection(con, dataSource)
+            }
+        }
+        ...省略其他配置...
     }
+
 ```
 
 警告
@@ -94,15 +94,15 @@ Jimmer采用极简设计，其API总入口`JSqlClient/KSqlClient`对外暴露的
 
 很多数据库操作框架对JDBC连接提供了一个轻量级有状态包装，比如
 
-* JPA的[EntityManager](https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html)
-* Hibernate的[Session](https://docs.jboss.org/hibernate/orm/6.2/javadocs/org/hibernate/Session.html)
-* MyBatis的[SqlSession](https://javadoc.io/doc/org.mybatis/mybatis/latest/org/apache/ibatis/session/SqlSession.html)。
+- JPA的[EntityManager](https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html)
+- Hibernate的[Session](https://docs.jboss.org/hibernate/orm/6.2/javadocs/org/hibernate/Session.html)
+- MyBatis的[SqlSession](https://javadoc.io/doc/org.mybatis/mybatis/latest/org/apache/ibatis/session/SqlSession.html)。
 
 并且对数据库事务也有有状态封装，比如
 
-* JPA的[EntityManager.getTransaction](https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html#getTransaction--)
-* Hibernate的[Session.getTransaction](https://docs.jboss.org/hibernate/orm/6.2/javadocs/org/hibernate/SharedSessionContract.html#getTransaction())
-* MyBatis的[SqlSession.commit](https://javadoc.io/doc/org.mybatis/mybatis/latest/org/apache/ibatis/session/SqlSession.html#commit())
+- JPA的[EntityManager.getTransaction](https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html#getTransaction--)
+- Hibernate的[Session.getTransaction](https://docs.jboss.org/hibernate/orm/6.2/javadocs/org/hibernate/SharedSessionContract.html#getTransaction())
+- MyBatis的[SqlSession.commit](https://javadoc.io/doc/org.mybatis/mybatis/latest/org/apache/ibatis/session/SqlSession.html#commit())
 
 Jimmer没有类似的抽象，其API总入口`JSqlClient/KSqlClient`对外暴露的API一律采用无状态设计，JDBC连接是Jimmer唯一的底层依赖。
 
@@ -112,8 +112,8 @@ Jimmer没有类似的抽象，其API总入口`JSqlClient/KSqlClient`对外暴露
 
 Jimmer无需提供任何类似于`createNativeQuery`的API
 
-* 对于和ORM关系不大的报表查询，用户期望书写完整的Native SQL，那么直接使用Spring的JdbcTemplate即可，这是因为Jimmer的事务管理和JdbcTemplate的事务管理完全相同。
-* 对于Jimmer的ORM风格查询，在强类型SQL DSL中混入[Native SQL](/zh/docs/query/native-sql)表达式即可
+- 对于和ORM关系不大的报表查询，用户期望书写完整的Native SQL，那么直接使用Spring的JdbcTemplate即可，这是因为Jimmer的事务管理和JdbcTemplate的事务管理完全相同。
+- 对于Jimmer的ORM风格查询，在强类型SQL DSL中混入[Native SQL](/zh/docs/query/native-sql)表达式即可
 
 ## 多数据源[​](#多数据源 "多数据源的直接链接")
 

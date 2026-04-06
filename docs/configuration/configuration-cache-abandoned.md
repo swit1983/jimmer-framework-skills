@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/cache-abandoned
 
-* [配置篇](/zh/docs/configuration/)
-* 缓存未生效的原因
+- [配置篇](/zh/docs/configuration/)
+- 缓存未生效的原因
 
 # 缓存未生效的原因
 

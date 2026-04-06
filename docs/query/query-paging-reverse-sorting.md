@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/query/paging/reverse-sorting
 
-* [查询篇](/zh/docs/query/)
-* [智能分页](/zh/docs/query/paging/)
-* 反排序优化
+- [查询篇](/zh/docs/query/)
+- [智能分页](/zh/docs/query/paging/)
+- 反排序优化
 
 本页总览
 
@@ -32,41 +32,41 @@ SpringBoot的`Page<E>`类型的定义过于复杂，不利于本文通过打印�
 
 分页查询代码为
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-public Page<Book> findBooks(  
-    int pageIndex,  
-    int pageSize  
-) {  
-    BookTable table = Tables.BOOK_TABLE;  
-      
-    return sqlClient  
-        .createQuery(table)  
-        .orderBy(table.name().asc(), table.edition().desc())  
-        .select(table)  
-        .fetchPage(pageIndex, pageSize);  
+```public page<book> findbooks(
+    int pageIndex,
+    int pageSize
+) {
+    BookTable table = Tables.BOOK_TABLE;
+
+    return sqlClient
+        .createQuery(table)
+        .orderBy(table.name().asc(), table.edition().desc())
+        .select(table)
+        .fetchPage(pageIndex, pageSize);
 }
-```
 
 ```
-fun findBooks(  
-    pageIndex: Int,  
-    pageSize: Int  
-): Page<Book> =  
-    sqlClient  
-        .createQuery(Book::class) {  
-            orderBy(table.name.asc(), table.edition.desc())  
-            select(table)  
-        }  
+
+```fun findbooks(
+    pageIndex: Int,
+    pageSize: Int
+): Page<Book> =
+    sqlClient
+        .createQuery(Book::class) {
+            orderBy(table.name.asc(), table.edition.desc())
+            select(table)
+        }
         .fetchPage(pageIndex, pageSize)
+
 ```
 
 我们假设`Book`记录共12条，如果`pageSize`为2，共6页，`pageIndex`的有5个取值：0、1、2、3、4、5。
 
-* 0、1、2: 要查询的数据偏前，采用正排序分页
-* 3、4、5: 要查询的数据偏后，采用反排序分页
+- 0、1、2: 要查询的数据偏前，采用正排序分页
+- 3、4、5: 要查询的数据偏后，采用反排序分页
 
 接下来，我们分别以`pageIndex=2`和`pageIndex=3`为例，展示反排序分页和正排序分页的差异。
 
@@ -74,96 +74,96 @@ fun findBooks(
 
 执行`findBooks(2, 2)`，生成的正排序SQL为
 
-```
-select  
-    tb_1_.ID,  
-    tb_1_.NAME,  
-    tb_1_.EDITION,  
-    tb_1_.PRICE,  
-    tb_1_.STORE_ID  
-from BOOK tb_1_  
-order by  
-    tb_1_.NAME asc,  
-    tb_1_.EDITION desc  
-limit ? /* 2 */   
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK tb_1_
+order by
+    tb_1_.NAME asc,
+    tb_1_.EDITION desc
+limit ? /* 2 */
 offset ? /* 4 */
+
 ```
 
 得到的结果为
 
-```
-{  
-    "rows":[  
-        {  
-            "id":11,  
-            "name":"GraphQL in Action",  
-            "edition":2,  
-            "price":81,  
-            "store":{  
-                "id":2  
-            }  
-        },  
-        {  
-            "id":10,  
-            "name":"GraphQL in Action",  
-            "edition":1,  
-            "price":80,  
-            "store":{  
-                "id":2  
-            }  
-        }  
-    ],  
-    "totalCount":12,  
-    "totalPage":6  
+```{
+    "rows":[
+        {
+            "id":11,
+            "name":"GraphQL in Action",
+            "edition":2,
+            "price":81,
+            "store":{
+                "id":2
+            }
+        },
+        {
+            "id":10,
+            "name":"GraphQL in Action",
+            "edition":1,
+            "price":80,
+            "store":{
+                "id":2
+            }
+        }
+    ],
+    "totalCount":12,
+    "totalPage":6
 }
+
 ```
 
 ### 反排序[​](#反排序 "反排序的直接链接")
 
 执行`findBooks(3, 2)`，生成的正排序SQL为
 
-```
-select  
-    tb_1_.ID,  
-    tb_1_.NAME,  
-    tb_1_.EDITION,  
-    tb_1_.PRICE,  
-    tb_1_.STORE_ID  
-from BOOK tb_1_  
-order by  
-    tb_1_.NAME desc, // 反序：asc变desc  
-    tb_1_.EDITION asc // 反序：desc变asc  
-limit ? /* 2 */   
+```select
+    tb_1_.ID,
+    tb_1_.NAME,
+    tb_1_.EDITION,
+    tb_1_.PRICE,
+    tb_1_.STORE_ID
+from BOOK tb_1_
+order by
+    tb_1_.NAME desc, // 反序：asc变desc
+    tb_1_.EDITION asc // 反序：desc变asc
+limit ? /* 2 */
 offset ? /* 4 */
+
 ```
 
 得到的结果为
 
-```
-{  
-    "rows":[  
-        {  
-            "id":3,  
-            "name":"Learning GraphQL",  
-            "edition":3,  
-            "price":51,  
-            "store":{  
-                "id":1  
-            }  
-        },  
-        {  
-            "id":2,  
-            "name":"Learning GraphQL",  
-            "edition":2,  
-            "price":55,  
-            "store":{  
-                "id":1  
-            }  
-        }  
-    ],  
-    "totalCount":12,  
-    "totalPage":6  
+```{
+    "rows":[
+        {
+            "id":3,
+            "name":"Learning GraphQL",
+            "edition":3,
+            "price":51,
+            "store":{
+                "id":1
+            }
+        },
+        {
+            "id":2,
+            "name":"Learning GraphQL",
+            "edition":2,
+            "price":55,
+            "store":{
+                "id":1
+            }
+        }
+    ],
+    "totalCount":12,
+    "totalPage":6
 }
+
 ```
 
 [编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/query/paging/reverse-sorting.mdx)

@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/default-database-stragegy
 
-* [配置篇](/zh/docs/configuration/)
-* 默认数据库名字策略
+- [配置篇](/zh/docs/configuration/)
+- 默认数据库名字策略
 
 # 默认数据库名字策略
 

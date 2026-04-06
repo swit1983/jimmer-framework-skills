@@ -2,7 +2,7 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/spring/
 
-* Spring篇
+- Spring篇
 
 # Spring篇
 

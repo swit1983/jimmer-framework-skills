@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/save-command-pessimistic-lock
 
-* [配置篇](/zh/docs/configuration/)
-* 保存指令悲观锁
+- [配置篇](/zh/docs/configuration/)
+- 保存指令悲观锁
 
 # 保存指令悲观锁
 

@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/id-only-target-checking-level
 
-* [配置篇](/zh/docs/configuration/)
-* 短关联id检查
+- [配置篇](/zh/docs/configuration/)
+- 短关联id检查
 
 # 短关联id检查
 

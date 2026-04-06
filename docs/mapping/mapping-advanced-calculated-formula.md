@@ -2,10 +2,10 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/mapping/advanced/calculated/formula
 
-* [映射篇](/zh/docs/mapping/)
-* [进阶映射](/zh/docs/mapping/advanced/)
-* [计算属性](/zh/docs/mapping/advanced/calculated/)
-* 简单计算
+- [映射篇](/zh/docs/mapping/)
+- [进阶映射](/zh/docs/mapping/advanced/)
+- [计算属性](/zh/docs/mapping/advanced/calculated/)
+- 简单计算
 
 本页总览
 
@@ -13,8 +13,8 @@
 
 简单计算属性是使用`@org.babyfish.jimmer.sql.Formula`声明的属性，有两者用法
 
-* 基于Java/Kotlin的计算属性
-* 基于SQL的计算属性
+- 基于Java/Kotlin的计算属性
+- 基于SQL的计算属性
 
 备注
 
@@ -24,8 +24,8 @@
 
 接下来，让我们为`Author`添加一个叫新属性`fullName`：
 
-```
-fullName = firstName + ' ' + lastName
+```fullname = firstname + ' ' + lastname
+
 ```
 
 接下来，我们用两者不同的方式，即基于Java/Kotlin的计算和基于SQL的计算，来实现`Author.fullName`
@@ -34,96 +34,94 @@ fullName = firstName + ' ' + lastName
 
 ### 依赖普通属性[​](#依赖普通属性 "依赖普通属性的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Author.java
 
-```
-package com.example.model;  
-  
-import org.babyfish.jimmer.sql.*;  
-  
-@Entity  
-public interface Author {  
-  
-    String firstName();  
-  
-    String lastName();  
-  
-    @Formula(dependencies = {"firstName", "lastName"})  
-    default String fullName() {  
-        return firstName() + ' ' + lastName();  
-    }  
-  
-    ...省略其他属性...  
+```package com.example.model;
+import org.babyfish.jimmer.sql.*;
+
+@Entity
+public interface Author {
+
+    String firstName();
+
+    String lastName();
+
+    @Formula(dependencies = {"firstName", "lastName"})
+    default String fullName() {
+        return firstName() + ' ' + lastName();
+    }
+
+    ...省略其他属性...
 }
+
 ```
 
 Author.kt
 
-```
-package com.example.model  
-  
-import org.babyfish.jimmer.sql.*  
-  
-@Entity  
-interface Author {  
-  
-    val firstName: String  
-  
-    val lastName: String  
-  
-    @Formula(dependencies = ["firstName", "lastName"])  
-    val fullName: String  
-        get() = "$firstName $lastName"  
-  
-    ...省略其他属性...  
+```package com.example.model
+import org.babyfish.jimmer.sql.*
+
+@Entity
+interface Author {
+
+    val firstName: String
+
+    val lastName: String
+
+    @Formula(dependencies = ["firstName", "lastName"])
+    val fullName: String
+        get() = "$firstName $lastName"
+
+    ...省略其他属性...
 }
+
 ```
 
 不难发现，基于Java/Kotlin的简单计算属性有以下特征：
 
-* 属性不是抽象的(Java下需要使用`default`关键字)，直接给出计算逻辑实现。
-* `@Formula`的`dependencies`被指定，表示当前属性依赖于`Author.firstName`和`Author.lastName`。
+- 属性不是抽象的(Java下需要使用`default`关键字)，直接给出计算逻辑实现。
+- `@Formula`的`dependencies`被指定，表示当前属性依赖于`Author.firstName`和`Author.lastName`。
 
   即，动态实体必须确保同时具备`firstName`和`lastName`属性才可以计算`fullName`
 
 用法如下
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Author author = authorRepository.findNullable(  
-    1L,  
-    Fetchers.AUTHOR_FETCHER  
-        //查询id(隐含+强制)和fullName  
-        .fullName()   
-);  
+```author author = authorrepository.findnullable(
+    1L,
+    Fetchers.AUTHOR_FETCHER
+        //查询id(隐含+强制)和fullName
+        .fullName()
+);
 System.out.println(author);
-```
 
 ```
-val author = authorRepository.findNullable(  
-    1L,  
-    newFetcher(Author::class).by {  
-        //查询id(隐含+强制)和fullName  
-        fullName()   
-    }  
-);  
+
+```val author = authorrepository.findnullable(
+    1L,
+    newFetcher(Author::class).by {
+        //查询id(隐含+强制)和fullName
+        fullName()
+    }
+);
 println(author)
+
 ```
 
 执行的SQL为
 
-```
-select   
-    tb_1_.ID,   
-    tb_1_.FIRST_NAME,   
-    tb_1_.LAST_NAME   
-from AUTHOR as tb_1_   
+```select
+    tb_1_.ID,
+    tb_1_.FIRST_NAME,
+    tb_1_.LAST_NAME
+from AUTHOR as tb_1_
     where tb_1_.ID = ?
+
 ```
 
 `fullName`是计算属性，在数据库中无对应字段，但其依赖于`firstName`和`lastName`，
@@ -131,8 +129,8 @@ from AUTHOR as tb_1_
 
 接下来，我们看看代码中打印会输出什么
 
-```
-{"id":1,"fullName":"Eve Procello"}
+```{"id":1,"fullname":"eve procello"}
+
 ```
 
 我们看到，Jackson序列化（实体对象的`toString`方法是序列化的一种快捷方式）后只有`fullName`，但没有`firstName`和`lastName`。
@@ -149,66 +147,66 @@ from AUTHOR as tb_1_
 
 假设有一个Embeddable类型
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 NameInfo.java
 
-```
-@Embeddable  
-public interface NameInfo {  
-    String firstName();  
-    String lastName();  
+```@embeddable
+public interface NameInfo {
+    String firstName();
+    String lastName();
 }
+
 ```
 
 NameInfo.kt
 
-```
-@Embeddable  
-interface NameInfo {  
-    val firstName: String  
-    val lastName: String  
+```@embeddable
+interface NameInfo {
+    val firstName: String
+    val lastName: String
 }
+
 ```
 
 如果某实体使用了此Embeddable类型，那么实体属性可以依赖其内部属性，例如
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Author.java
 
-```
-@Entity  
-public interface Author {  
-  
-    NameInfo nameInfo();  
-  
-    @Formula(dependencies = {"nameInfo.firstName", "nameInfo.lastName"})  
-    // 也可以写成：@Formula(dependencies = "nameInfo")  
-    default String fullName() {  
-        return nameInfo().firstName() + ' ' + nameInfo().lastName();  
-    }  
-  
-    ...省略其他属性...  
+```@entity
+public interface Author {
+
+    NameInfo nameInfo();
+
+    @Formula(dependencies = {"nameInfo.firstName", "nameInfo.lastName"})
+    // 也可以写成：@Formula(dependencies = "nameInfo")
+    default String fullName() {
+        return nameInfo().firstName() + ' ' + nameInfo().lastName();
+    }
+
+    ...省略其他属性...
 }
+
 ```
 
 Author.kt
 
-```
-@Entity  
-interface Author {  
-  
-    val nameInfo: NameInfo  
-  
-    @Formula(dependencies = ["nameInfo.firstName", "nameInfo.lastName"])  
-    // 也可以写成：@Formula(dependencies = ["nameInfo"])  
-    ...省略其他属性...  
-    val fullName: String  
-        get() = "${nameInfo.firstName} ${nameInfo.lastName}"  
+```@entity
+interface Author {
+
+    val nameInfo: NameInfo
+
+    @Formula(dependencies = ["nameInfo.firstName", "nameInfo.lastName"])
+    // 也可以写成：@Formula(dependencies = ["nameInfo"])
+    ...省略其他属性...
+    val fullName: String
+        get() = "${nameInfo.firstName} ${nameInfo.lastName}"
 }
+
 ```
 
 信息
@@ -217,255 +215,253 @@ interface Author {
 
 ### 依赖关联属性[​](#依赖关联属性 "依赖关联属性的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Book.java
 
-```
-@Entity  
-public interface Book {  
-  
-    @ManyToMany  
-    List<Author> authors();  
-  
-    @Formula(dependencies = "authors")  
-    default int authorCount() {  
-        return authors().size();  
-    }  
-  
-    @Formula(dependencies = {"authors.firstName", "authors.lastName"})  
-    default List<String> authorNames() {  
-        return authors()  
-            .stream()  
-            .map(author -> author.firstName() + ' ' + author.lastName())  
-            .collect(Collectors.toList());  
-    }  
-  
-    ...省略其他属性...  
+```@entity
+public interface Book {
+
+    @ManyToMany
+    List<Author> authors();
+
+    @Formula(dependencies = "authors")
+    default int authorCount() {
+        return authors().size();
+    }
+
+    @Formula(dependencies = {"authors.firstName", "authors.lastName"})
+    default List<String> authorNames() {
+        return authors()
+            .stream()
+            .map(author -> author.firstName() + ' ' + author.lastName())
+            .collect(Collectors.toList());
+    }
+
+    ...省略其他属性...
 }
+
 ```
 
 Book.kt
 
-```
-@Entity  
-public interface Book {  
-  
-    @ManyToMany  
-    val authors: List<Author>  
-  
-    @Formula(dependencies = "authors")  
-    val authorCount: Int  
-        get() = authors.size  
-  
-    @Formula(dependencies = ["authors.firstName", "authors.lastName"])  
-    val authorNames: List<String>  
-        get() = authors.map { "${it.firstName} ${it.lastName}" }  
-  
-    ...省略其他属性...  
+```@entity
+public interface Book {
+
+    @ManyToMany
+    val authors: List<Author>
+
+    @Formula(dependencies = "authors")
+    val authorCount: Int
+        get() = authors.size
+
+    @Formula(dependencies = ["authors.firstName", "authors.lastName"])
+    val authorNames: List<String>
+        get() = authors.map { "${it.firstName} ${it.lastName}" }
+
+    ...省略其他属性...
 }
+
 ```
 
 执行如下代码
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable table = BookTable.$;  
-  
-List<Book> books = sqlClient  
-    .createQuery(table)  
-    .where(table.name().eq("Learning GraphQL"))  
-    .orderBy(table.edition().desc())  
-    .select(  
-        table.fetch(  
-            BookFetcher.$  
-                .name()  
-                .edition()  
-                .authorCount()  
-                .authorNames()  
-        )  
-    )  
+```booktable table = booktable.$;
+List<Book> books = sqlClient
+    .createQuery(table)
+    .where(table.name().eq("Learning GraphQL"))
+    .orderBy(table.edition().desc())
+    .select(
+        table.fetch(
+            BookFetcher.$
+                .name()
+                .edition()
+                .authorCount()
+                .authorNames()
+        )
+    )
     .execute();
-```
 
 ```
-val books = sqlClient  
-    .createQuery(Book::class) {  
-        where(table.name eq "Learning GraphQL")  
-        orderBy(table.edition().desc())  
-        select(  
-            table.fetchBy {  
-                name()  
-                edition()  
-                authorCount()  
-                authorNames()  
-            }  
-        )  
-    }  
+
+```val books = sqlclient
+    .createQuery(Book::class) {
+        where(table.name eq "Learning GraphQL")
+        orderBy(table.edition().desc())
+        select(
+            table.fetchBy {
+                name()
+                edition()
+                authorCount()
+                authorNames()
+            }
+        )
+    }
     .execute()
+
 ```
 
 执行，生成如下两条SQL语句
 
-1. ```
-   select  
-       tb_1_.ID,  
-       tb_1_.NAME,  
-       tb_1_.EDITION,  
-   from BOOK tb_1_  
-   where  
-       tb_1_.NAME = ? /* Learning GraphQL */  
-   order by  
+1. ```select
+       tb_1_.ID,
+       tb_1_.NAME,
+       tb_1_.EDITION,
+   from BOOK tb_1_
+   where
+       tb_1_.NAME = ? /* Learning GraphQL */
+   order by
        tb_1_.EDITION desc
-   ```
-2. ```
-   select  
-       tb_2_.BOOK_ID,  
-       tb_1_.ID,  
-       tb_1_.FIRST_NAME,  
-       tb_1_.LAST_NAME  
-   from AUTHOR tb_1_  
-   inner join BOOK_AUTHOR_MAPPING tb_2_  
-       on tb_1_.ID = tb_2_.AUTHOR_ID  
-   where  
-       tb_2_.BOOK_ID in (  
-           ? /* 3 */, ? /* 2 */, ? /* 1 */  
-       )  
-   order by  
-       tb_1_.FIRST_NAME asc,  
+
+```
+
+2. ```select
+       tb_2_.BOOK_ID,
+       tb_1_.ID,
+       tb_1_.FIRST_NAME,
+       tb_1_.LAST_NAME
+   from AUTHOR tb_1_
+   inner join BOOK_AUTHOR_MAPPING tb_2_
+       on tb_1_.ID = tb_2_.AUTHOR_ID
+   where
+       tb_2_.BOOK_ID in (
+           ? /* 3 */, ? /* 2 */, ? /* 1 */
+       )
+   order by
+       tb_1_.FIRST_NAME asc,
        tb_1_.LAST_NAME asc
-   ```
+
+```
 
 得到的数据如下
 
-```
-[  
-    {  
-        "id":3,  
-        "name":"Learning GraphQL",  
-        "edition":3,  
-        "authorCount":2,  
-        "authorNames":["Alex Banks","Eve Procello"]  
-    },   
-    {  
-        "id":2,  
-        "name":"Learning GraphQL",  
-        "edition":2,  
-        "authorCount":2,  
-        "authorNames":["Alex Banks","Eve Procello"]  
-    },   
-    {  
-        "id":1,  
-        "name":"Learning GraphQL",  
-        "edition":1,  
-        "authorCount":2,  
-        "authorNames":["Alex Banks","Eve Procello"]  
-    }  
+```[
+    {
+        "id":3,
+        "name":"Learning GraphQL",
+        "edition":3,
+        "authorCount":2,
+        "authorNames":["Alex Banks","Eve Procello"]
+    },
+    {
+        "id":2,
+        "name":"Learning GraphQL",
+        "edition":2,
+        "authorCount":2,
+        "authorNames":["Alex Banks","Eve Procello"]
+    },
+    {
+        "id":1,
+        "name":"Learning GraphQL",
+        "edition":1,
+        "authorCount":2,
+        "authorNames":["Alex Banks","Eve Procello"]
+    }
 ]
+
 ```
 
 ## 2. 基于SQL的计算[​](#2-基于sql的计算 "2. 基于SQL的计算的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Author.java
 
-```
-package com.example.model;  
-  
-import org.babyfish.jimmer.sql.*;  
-  
-@Entity  
-public interface Author {  
-  
-    @Formula(sql = "concat(%alias.FIRST_NAME, ' ', %alias.LAST_NAME)")  
-    String fullName();  
-  
-    ...省略其他属性...  
+```package com.example.model;
+import org.babyfish.jimmer.sql.*;
+
+@Entity
+public interface Author {
+
+    @Formula(sql = "concat(%alias.FIRST_NAME, ' ', %alias.LAST_NAME)")
+    String fullName();
+
+    ...省略其他属性...
 }
+
 ```
 
 Author.kt
 
-```
-package com.example.model  
-  
-import org.babyfish.jimmer.sql.*  
-  
-@Entity  
-interface Author {  
-  
-    @Formula(sql = "concat(%alias.FIRST_NAME, ' ', %alias.LAST_NAME)")  
-    val fullName: String  
-  
-    ...省略其他属性...  
+```package com.example.model
+import org.babyfish.jimmer.sql.*
+
+@Entity
+interface Author {
+
+    @Formula(sql = "concat(%alias.FIRST_NAME, ' ', %alias.LAST_NAME)")
+    val fullName: String
+
+    ...省略其他属性...
 }
+
 ```
 
 不难发现，基于SQL的简单计算属性有以下特征
 
-* 属性是抽象的。
-* `@Formula`的`sql`被指定为一个SQL表达式，内部有一个特殊的符号`%alias`
+- 属性是抽象的。
+- `@Formula`的`sql`被指定为一个SQL表达式，内部有一个特殊的符号`%alias`
 
   用户无法事先知道当前表在最终SQL中的别名，所以，Jimmer在这里约定`%alias`表示实际的表列名
 
 用法如下
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Author author = authorRepository.findNullable(  
-    1L,  
-    Fetchers.AUTHOR_FETCHER  
-        //查询id(隐含+强制)和fullName  
-        .fullName()   
-);  
+```author author = authorrepository.findnullable(
+    1L,
+    Fetchers.AUTHOR_FETCHER
+        //查询id(隐含+强制)和fullName
+        .fullName()
+);
 System.out.println(author);
-```
 
 ```
-val author = authorRepository.findNullable(  
-    1L,  
-    newFetcher(Author::class).by {  
-        //查询id(隐含+强制)和fullName  
-        fullName()   
-    }  
-);  
+
+```val author = authorrepository.findnullable(
+    1L,
+    newFetcher(Author::class).by {
+        //查询id(隐含+强制)和fullName
+        fullName()
+    }
+);
 println(author)
+
 ```
 
 生成SQL如下:
 
-```
-select   
-    tb_1_.ID,   
-    /* 这里，@Formula.sql中的`alias`被替换成了`tb_1_` */  
-    concat(tb_1_.FIRST_NAME, ' ', tb_1_.LAST_NAME)   
-from AUTHOR as tb_1_   
+```select
+    tb_1_.ID,
+    /* 这里，@Formula.sql中的`alias`被替换成了`tb_1_` */
+    concat(tb_1_.FIRST_NAME, ' ', tb_1_.LAST_NAME)
+from AUTHOR as tb_1_
 where tb_1_.ID = ?
+
 ```
 
 最终打印结果
 
-```
-{"id":1,"fullName":"Eve Procello"}
+```{"id":1,"fullname":"eve procello"}
+
 ```
 
 ## 比较[​](#比较 "比较的直接链接")
 
 相比于基于Java/Kotlin的简单计算，基于SQL的简单计算有一个缺点和一个优点。
 
-* 缺点：如果对象抓取器同时抓取`firstName`、`lastName`和`fullName`  ，会导致最终SQL查询三列：
+- 缺点：如果对象抓取器同时抓取`firstName`、`lastName`和`fullName`  ，会导致最终SQL查询三列：
 
   `tb_1_.FIRST_NAME`, `tb_1_.LAST_NAME`和`concat(tb_1_.FIRST_NAME, ' ', tb_1_.LAST_NAME)`。
 
   很明显，返回数据包含冗余，是一种浪费。
-* 优点：基于Java/Kotlin的计算属性只能作为对象抓取器的被抓取字段，无法为SQL DSL所用。
+- 优点：基于Java/Kotlin的计算属性只能作为对象抓取器的被抓取字段，无法为SQL DSL所用。
 
   而基于SQL的计算属性会被代码生成器生成到强类型SQL DSL的API中，为SQL DSL所用，如
 

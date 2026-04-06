@@ -2,7 +2,7 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/resource/
 
-* 资源篇
+- 资源篇
 
 # 资源篇
 

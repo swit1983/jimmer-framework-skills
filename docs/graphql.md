@@ -2,7 +2,7 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/graphql/
 
-* GraphQL篇
+- GraphQL篇
 
 # GraphQL篇
 

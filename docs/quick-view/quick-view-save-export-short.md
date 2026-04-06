@@ -2,10 +2,10 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/save/export/short
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* [2. 保存任意形状](/zh/docs/quick-view/save/)
-* [暴露功能](/zh/docs/quick-view/save/export/)
-* 保存短关联
+- [快速预览 ★](/zh/docs/quick-view/)
+- [2. 保存任意形状](/zh/docs/quick-view/save/)
+- [暴露功能](/zh/docs/quick-view/save/export/)
+- 保存短关联
 
 本页总览
 
@@ -17,8 +17,8 @@
 
 对于UI界面而言
 
-* 引用关联 *(一对一和多对一)* 表现为单选菜单
-* 集合关联 *(一对多和多对多)* 表现为多选菜单
+- 引用关联 *(一对一和多对一)* 表现为单选菜单
+- 集合关联 *(一对多和多对多)* 表现为多选菜单
 
 例如：
 
@@ -58,109 +58,109 @@ Authors
 
    Book.dto
 
-   ```
-   input BookInputWithShortAssociations {  
-       #allScalars(this)  
-       id(store) //默认别名storeId  
-       id(authors) as authorIds  
+   ```input bookinputwithshortassociations {
+       #allScalars(this)
+       id(store) //默认别名storeId
+       id(authors) as authorIds
    }
-   ```
+
+```
 
 ## 生成的代码[​](#生成的代码 "生成的代码的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookInputWithShortAssociations.java
 
-```
-@GeneratedBy(  
-        file = "<yourproject>/src/main/dto/Book.dto"  
-)  
-public class BookInputWithShortAssociations implements Input<Book> {  
-  
-    @Nullable  
-    private Long id;  
-  
-    @NotNull  
-    private String name;  
-  
-    private int edition;  
-  
-    @NotNull  
-    private BigDecimal price;  
-  
-    @Nullable  
-    private Long storeId;  
-  
-    @NotNull  
-    private List<Long> authorIds;  
-  
-    ...省略其他方法...  
+```@generatedby(
+        file = "<yourproject>/src/main/dto/Book.dto"
+)
+public class BookInputWithShortAssociations implements Input<Book> {
+
+    @Nullable
+    private Long id;
+
+    @NotNull
+    private String name;
+
+    private int edition;
+
+    @NotNull
+    private BigDecimal price;
+
+    @Nullable
+    private Long storeId;
+
+    @NotNull
+    private List<Long> authorIds;
+
+    ...省略其他方法...
 }
+
 ```
 
 BookInputWithShortAssociations.kt
 
-```
-@GeneratedBy(  
-        file = "<yourproject>/src/main/dto/Book.dto"  
-)  
-data class BookInputWithShortAssociations(  
-    val id: Long?,  
-    val name: String,  
-    val edition: Int,  
-    val price: BigDecimal,  
-    val storeId: Long?  
-    val authorIds: List<Long>  
-) : Input<Book> {  
-    ...省略其他方法...  
+```@generatedby(
+        file = "<yourproject>/src/main/dto/Book.dto"
+)
+data class BookInputWithShortAssociations(
+    val id: Long?,
+    val name: String,
+    val edition: Int,
+    val price: BigDecimal,
+    val storeId: Long?
+    val authorIds: List<Long>
+) : Input<Book> {
+    ...省略其他方法...
 }
+
 ```
 
 ## 编写HTTP服务[​](#编写http服务 "编写HTTP服务的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookController.java
 
-```
-@RestController  
-public class BookController {  
-  
-    private final JSqlClient sqlClient;  
-  
-    public BookController(JSqlClient sqlClient) {  
-        this.sqlClient = sqlClient;  
-    }   
-  
-    @PutMapping("/book")  
-    pubic int saveBookInputWithShortAssociations(  
-        @RequestBody BookInputWithShortAssociations input  
-    ) {  
-        return sqlClient  
-            .save(input)  
-            .getTotalAffectedRowCount();  
-    }  
+```@restcontroller
+public class BookController {
+
+    private final JSqlClient sqlClient;
+
+    public BookController(JSqlClient sqlClient) {
+        this.sqlClient = sqlClient;
+    }
+
+    @PutMapping("/book")
+    pubic int saveBookInputWithShortAssociations(
+        @RequestBody BookInputWithShortAssociations input
+    ) {
+        return sqlClient
+            .save(input)
+            .getTotalAffectedRowCount();
+    }
 }
+
 ```
 
 BookController.java
 
-```
-class BookController(  
-    private val sqlClient: KSqlClient  
-) {  
-  
-    @PutMapping("/book")  
-    fun saveBookInputWithShortAssociations(  
-        @RequestBody input: BookInputWithShortAssociations  
-    ): Int =  
-        sqlClient  
-            .save(input)  
-            .totalAffectedRowCount  
+```class bookcontroller(
+    private val sqlClient: KSqlClient
+) {
+
+    @PutMapping("/book")
+    fun saveBookInputWithShortAssociations(
+        @RequestBody input: BookInputWithShortAssociations
+    ): Int =
+        sqlClient
+            .save(input)
+            .totalAffectedRowCount
 }
+
 ```
 
 可见，无论Input DTO如何改变，Jimmer仍然只需一个方法调用即可完成数据保存。

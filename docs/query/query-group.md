@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/query/group
 
-* [查询篇](/zh/docs/query/)
-* 聚合和分组
+- [查询篇](/zh/docs/query/)
+- 聚合和分组
 
 本页总览
 
@@ -11,88 +11,86 @@
 
 ## 聚合[​](#聚合 "聚合的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable table = Tables.BOOK_TABLE;  
-  
-long count = sqlClient  
-    .createQuery(table)  
-    .where(table.name().ilike("graphql"))  
-    .select(  
-        table  
-            .asTableEx().authors().id()  
-            .count(true) // distinct: true  
-    )  
+```booktable table = tables.book_table;
+long count = sqlClient
+    .createQuery(table)
+    .where(table.name().ilike("graphql"))
+    .select(
+        table
+            .asTableEx().authors().id()
+            .count(true) // distinct: true
+    )
     .fetchOne();
-```
 
 ```
-val count = sqlClient  
-    .createQuery(Book::class) {  
-        where(table.name.ilike("graphql"))  
-        select(  
-            count(  
-                table.asTableEx().authors.id,  
-                distinct = true  
-            )  
-        )  
-    }  
+
+```val count = sqlclient
+    .createQuery(Book::class) {
+        where(table.name.ilike("graphql"))
+        select(
+            count(
+                table.asTableEx().authors.id,
+                distinct = true
+            )
+        )
+    }
     .fetchOne()
+
 ```
 
 生成的SQL为
 
-```
-select  
-    count(distinct tb_2_.AUTHOR_ID)  
-from BOOK tb_1_  
-inner join BOOK_AUTHOR_MAPPING tb_2_  
-    on tb_1_.ID = tb_2_.BOOK_ID  
-where  
+```select
+    count(distinct tb_2_.AUTHOR_ID)
+from BOOK tb_1_
+inner join BOOK_AUTHOR_MAPPING tb_2_
+    on tb_1_.ID = tb_2_.BOOK_ID
+where
     lower(tb_1_.NAME) like ? /* %graphql% */
+
 ```
 
 ## 分组[​](#分组 "分组的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-BookTable table = Tables.BOOK_TABLE;  
-  
-List<Tuple2<Long, BigDecimal>> tuples = sqlClient  
-    .createQuery(table)  
-    .groupBy(table.storeId()) ❶  
-    .select(  
-            table.storeId(), ❷  
-            table.price().avg() ❸  
-    )  
+```booktable table = tables.book_table;
+List<Tuple2<Long, BigDecimal>> tuples = sqlClient
+    .createQuery(table)
+    .groupBy(table.storeId()) ❶
+    .select(
+            table.storeId(), ❷
+            table.price().avg() ❸
+    )
     .execute();
-```
 
 ```
-val tuples: List<Tuple2<Long, BigDecimal>> = sqlClient  
-    .createQuery(Book::class) {  
-        groupBy(table.store.id) ❶  
-        select(  
-            table.store.id, ❷  
-            avg(table.price).asNonNull() ❸  
-        )  
-    }  
+
+```val tuples: list<tuple2<long, bigdecimal>> = sqlclient
+    .createQuery(Book::class) {
+        groupBy(table.store.id) ❶
+        select(
+            table.store.id, ❷
+            avg(table.price).asNonNull() ❸
+        )
+    }
     .execute()
+
 ```
 
-* ❶ 按照`BOOK`表的外键`STORE_ID`分组
+- ❶ 按照`BOOK`表的外键`STORE_ID`分组
 
   信息
 
   这里，Jimmer不会把`table.store`视为表连接操作，而是整体视`table.store.id`为外键字段
 
   请参见[幻连接](/zh/docs/query/dynamic-join/optimization#%E5%B9%BB%E8%BF%9E%E6%8E%A5)
-* ❷ 分组列可以被直接查询
-* ❸ 非分组列不能直接查询，只能作为聚合函数表达式的参数查询
+- ❷ 分组列可以被直接查询
+- ❸ 非分组列不能直接查询，只能作为聚合函数表达式的参数查询
 
   警告
 

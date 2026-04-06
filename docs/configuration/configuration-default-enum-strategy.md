@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/default-enum-strategy
 
-* [配置篇](/zh/docs/configuration/)
-* 默认枚举策略
+- [配置篇](/zh/docs/configuration/)
+- 默认枚举策略
 
 # 默认枚举策略
 

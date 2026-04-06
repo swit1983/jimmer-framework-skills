@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/dsl/super_qbe
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* [3. 任意动态查询](/zh/docs/quick-view/dsl/)
-* 超级QBE
+- [快速预览 ★](/zh/docs/quick-view/)
+- [3. 任意动态查询](/zh/docs/quick-view/dsl/)
+- 超级QBE
 
 本页总览
 
@@ -31,27 +31,27 @@ Jimmer自带的[DTO语言](/zh/docs/object/view/dto-language)可以快速解决�
 
    Book.dto
 
-   ```
-   export com.yourcompany.yourproject.model.Book   
-       -> package com.yourcompany.yourproject.model.dto  
-     
-   specification BookSpecification {  
-       like/i(name)  
-       ge(price) // Default alias: minPrice  
-       le(price) // Default alias: maxPrice  
-       flat(store) {  
-           as(^ -> store) {  
-               like/i(name)  
-               like/i(website)  
-           }  
-       }  
-       flat(authors) {  
-           like/i(firstName, lastName) as authorName  
-           gender as authorGender  
-       }  
-   }  
+   ```export com.yourcompany.yourproject.model.book
+       - > package com.yourcompany.yourproject.model.dto
+
+   specification BookSpecification {
+       like/i(name)
+       ge(price) // Default alias: minPrice
+       le(price) // Default alias: maxPrice
+       flat(store) {
+           as(^ -> store) {
+               like/i(name)
+               like/i(website)
+           }
+       }
+       flat(authors) {
+           like/i(firstName, lastName) as authorName
+           gender as authorGender
+       }
+   }
    ...省略其他DTO类型定义...
-   ```
+
+```
 
    信息
 
@@ -63,125 +63,125 @@ Jimmer自带的[DTO语言](/zh/docs/object/view/dto-language)可以快速解决�
 
 编译项目，Jimmer将会自动生成如下代码
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookSpecification.java
 
-```
-@GeneratedBy( ❶   
-        file = "<yourproject>/src/main/dto/Book.dto"  
-)  
-public class BookSpecification   
-implements JSpecification<Book, BookTable> {  ❷  
-  
-    @Nullable  
-    private String name;  
-  
-    @Nullable  
-    private BigDecimal minPrice;  
-  
-    @Nullable  
-    private BigDecimal maxPrice;  
-  
-    @Nullable  
-    private String storeName;  
-  
-    @Nullable  
-    private String storeWebsite;  
-  
-    @Nullable  
-    private String authorName;  
-  
-    @Nullable  
-    private Gender authorGender;  
-  
-    @Override  
-    public void applyTo(SpecificationArgs<Book, BookTable> args) { ❸  
-        ...Omit complex dynamic query logic...  
-    }  
-  
-    ...Omit getters, setters, hashCode, equals, toString...  
+```@generatedby( ❶
+        file = "<yourproject>/src/main/dto/Book.dto"
+)
+public class BookSpecification
+implements JSpecification<Book, BookTable> {  ❷
+
+    @Nullable
+    private String name;
+
+    @Nullable
+    private BigDecimal minPrice;
+
+    @Nullable
+    private BigDecimal maxPrice;
+
+    @Nullable
+    private String storeName;
+
+    @Nullable
+    private String storeWebsite;
+
+    @Nullable
+    private String authorName;
+
+    @Nullable
+    private Gender authorGender;
+
+    @Override
+    public void applyTo(SpecificationArgs<Book, BookTable> args) { ❸
+        ...Omit complex dynamic query logic...
+    }
+
+    ...Omit getters, setters, hashCode, equals, toString...
 }
+
 ```
 
 BookSpecification.kt
 
-```
-@GeneratedBy( ❶  
-        file = "<yourproject>/src/main/dto/Book.dto"  
-)  
-data class BookSpecification(  
-    val name: String? = null,  
-    val minPrice: BigDecimal? = null,  
-    val maxPrice: BigDecimal? = null,  
-    val storeName: String? = null,  
-    val storeWebsite: String? = null,  
-    val authorName: String? = null,  
-    val authorGender: Gender? = null  
-) : KSpecification<Book> { ❷  
-  
-    override applyTo(args: KSpecificationArgs<Book>) { ❸  
-        ...Omit complex dynamic query logic...  
-    }  
+```@generatedby( ❶
+        file = "<yourproject>/src/main/dto/Book.dto"
+)
+data class BookSpecification(
+    val name: String? = null,
+    val minPrice: BigDecimal? = null,
+    val maxPrice: BigDecimal? = null,
+    val storeName: String? = null,
+    val storeWebsite: String? = null,
+    val authorName: String? = null,
+    val authorGender: Gender? = null
+) : KSpecification<Book> { ❷
+
+    override applyTo(args: KSpecificationArgs<Book>) { ❸
+        ...Omit complex dynamic query logic...
+    }
 }
+
 ```
 
-* ❶ 提醒开发人员这个类是在编译时被Jimmer自动生成的
-* ❷ Specification DTO实现的接口
-* ❸ 这个类知道如何生成SQL条件
+- ❶ 提醒开发人员这个类是在编译时被Jimmer自动生成的
+- ❷ Specification DTO实现的接口
+- ❸ 这个类知道如何生成SQL条件
 
 ## 使用[​](#使用 "使用的直接链接")
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-@Repository  
-public class BookRepository {  
-  
-    private final JSqlClient sqlClient;  
-  
-    public BookRepository(JSqlClient sqlClient) {  
-        this.sqlClient = sqlClient;  
-    }  
-  
-    List<Book> findBooks(  
-        BookSpecification specification,  
-        @Nullable Fetcher<Book> fetcher  
-    ) {  
-        BookTable table = Tables.BOOK_TABLE;  
-  
-        return sqlClient  
-            .createQuery(table)  
-            .where(specification)  
-            .select(table.fetch(fetcher))  
-            .execute();  
-    }  
+```@repository
+public class BookRepository {
+
+    private final JSqlClient sqlClient;
+
+    public BookRepository(JSqlClient sqlClient) {
+        this.sqlClient = sqlClient;
+    }
+
+    List<Book> findBooks(
+        BookSpecification specification,
+        @Nullable Fetcher<Book> fetcher
+    ) {
+        BookTable table = Tables.BOOK_TABLE;
+
+        return sqlClient
+            .createQuery(table)
+            .where(specification)
+            .select(table.fetch(fetcher))
+            .execute();
+    }
 }
+
 ```
 
 BookRepository.kt
 
-```
-@Repository  
-class BookRepository(  
-    private val sqlClient: KSqlClient  
-) {  
-  
-    fun findBooks(  
-        specification: BookSpecification,  
-        fetcher: Fetcher<Book>? = null  
-    ): List<Book> =  
-        sqlClient  
-            .createQuery(Book::class) {  
-                where(specification)  
-                select(table.fetch(table))  
-            }  
-            .execute()  
+```@repository
+class BookRepository(
+    private val sqlClient: KSqlClient
+) {
+
+    fun findBooks(
+        specification: BookSpecification,
+        fetcher: Fetcher<Book>? = null
+    ): List<Book> =
+        sqlClient
+            .createQuery(Book::class) {
+                where(specification)
+                select(table.fetch(table))
+            }
+            .execute()
 }
+
 ```
 
 我们看到，支持，我们只需一行代码即可实现复杂的动态查询。

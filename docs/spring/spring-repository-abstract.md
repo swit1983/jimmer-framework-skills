@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/spring/repository/abstract
 
-* [Spring篇](/zh/docs/spring/)
-* [Spring Data风格](/zh/docs/spring/repository/)
-* 简单查询
+- [Spring篇](/zh/docs/spring/)
+- [Spring Data风格](/zh/docs/spring/repository/)
+- 简单查询
 
 本页总览
 
@@ -12,56 +12,54 @@
 
 和其他spring-data实现一样，用户可以在Repository接口内部定义抽象方法。只要这些方法的名称、参数和返回值遵循约定，Jimmer自动实现它们。比如
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.jetbrains.annotations.Nullable;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    List<Book> findByNameOrderByEditionDesc(  
-        @Nullable String name  
-    );  
-  
-    List<Book> findByPriceBetweenOrderByName(  
-        @Nullable BigDecimal minPrice,   
-        @Nullable BigDecimal maxPrice  
-    );  
-  
-    long countByName(String name);  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.jetbrains.annotations.Nullable;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    List<Book> findByNameOrderByEditionDesc(
+        @Nullable String name
+    );
+
+    List<Book> findByPriceBetweenOrderByName(
+        @Nullable BigDecimal minPrice,
+        @Nullable BigDecimal maxPrice
+    );
+
+    long countByName(String name);
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    fun findByNameOrderByEditionDesc(  
-        name: String?  
-    ): List<Book>  
-  
-    fun findByPriceBetweenOrderByName(  
-        minPrice: BigDecimal?,   
-        maxPrice: BigDecimal?  
-    ): List<Book>  
-  
-    fun countByName(String name): Long  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface BookRepository : KRepository<Book, Long> {
+
+    fun findByNameOrderByEditionDesc(
+        name: String?
+    ): List<Book>
+
+    fun findByPriceBetweenOrderByName(
+        minPrice: BigDecimal?,
+        maxPrice: BigDecimal?
+    ): List<Book>
+
+    fun countByName(String name): Long
 }
+
 ```
 
 备注
@@ -78,270 +76,271 @@ interface BookRepository : KRepository<Book, Long> {
 
 让我们来看另外一个更具代表性的例子，抽象方法定义如下
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.jetbrains.annotations.Nullable;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    List<Book> findByNameLikeIgnoreCaseAndPriceBetween(  
-        @Nullable String name,  
-        @Nullable BigDecimal minPrice,  
-        @Nullable BigDecimal maxPrice  
-    );  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.jetbrains.annotations.Nullable;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    List<Book> findByNameLikeIgnoreCaseAndPriceBetween(
+        @Nullable String name,
+        @Nullable BigDecimal minPrice,
+        @Nullable BigDecimal maxPrice
+    );
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    fun findByNameLikeIgnoreCaseAndPriceBetween(  
-        name: String? = null,  
-        minPrice: BigDecimal? = null,   
-        maxPrice: BigDecimal? = null  
-    ): List<Book>  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface BookRepository : KRepository<Book, Long> {
+
+    fun findByNameLikeIgnoreCaseAndPriceBetween(
+        name: String? = null,
+        minPrice: BigDecimal? = null,
+        maxPrice: BigDecimal? = null
+    ): List<Book>
 }
+
 ```
 
 该方法的每个参数都可以为null，请看如下6种用法
 
-* 不指定任何参数
+- 不指定任何参数
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          null,  
-          null,  
-          null  
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          null,
+          null,
+          null
       );
-  ```
 
-  ```
-  val books = bookRepository  
+```
+
+  ```val books = bookrepository
       .findByNameLikeIgnoreCaseAndPriceBetween()
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
   from BOOK as tb_1_
-  ```
-* 指定name
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          "G",  
-          null,  
-          null  
+- 指定name
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          "G",
+          null,
+          null
       );
-  ```
 
-  ```
-  val books = bookRepository  
+```
+
+  ```val books = bookrepository
       .findByNameLikeIgnoreCaseAndPriceBetween(name = "G")
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
   where lower(tb_1_.NAME) like ? /* %g% */
-  ```
-* 指定minPrice
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          null,  
-          new BigDecimal(40),  
-          null  
+- 指定minPrice
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          null,
+          new BigDecimal(40),
+          null
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          minPrice = BigDecimal(40)  
+```
+
+  ```val books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          minPrice = BigDecimal(40)
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
   where tb_1_.PRICE >= ? /* 40 */
-  ```
-* 指定maxPrice
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          null,  
-          null,  
-          new BigDecimal(60)  
+- 指定maxPrice
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          null,
+          null,
+          new BigDecimal(60)
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          maxPrice = BigDecimal(60)  
+```
+
+  ```val books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          maxPrice = BigDecimal(60)
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
   where tb_1_.PRICE <= ? /* 60 */
-  ```
-* 同时指定minPrice和maxPrice
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          null,  
-          new BigDecimal(40),  
-          new BigDecimal(60)  
+- 同时指定minPrice和maxPrice
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          null,
+          new BigDecimal(40),
+          new BigDecimal(60)
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          null,  
-          BigDecimal(40),  
-          BigDecimal(60)  
+```
+
+  ```val books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          null,
+          BigDecimal(40),
+          BigDecimal(60)
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
-  where (  
-      tb_1_.PRICE between ? /* 40 */ and ? /* 60 */  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
+  where (
+      tb_1_.PRICE between ? /* 40 */ and ? /* 60 */
   )
-  ```
-* 指定所有参数
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          "G",  
-          new BigDecimal(40),  
-          new BigDecimal(60)  
+- 指定所有参数
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          "G",
+          new BigDecimal(40),
+          new BigDecimal(60)
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByNameLikeIgnoreCaseAndPriceBetween(  
-          "G",  
-          BigDecimal(40),  
-          BigDecimal(60)  
+```
+
+  ```val books = bookrepository
+      .findByNameLikeIgnoreCaseAndPriceBetween(
+          "G",
+          BigDecimal(40),
+          BigDecimal(60)
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
-  where   
-      where lower(tb_1_.NAME) like ? /* %g% */  
-  and (  
-      tb_1_.PRICE between ? /* 40 */ and ? /* 60 */  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
+  where
+      where lower(tb_1_.NAME) like ? /* %g% */
+  and (
+      tb_1_.PRICE between ? /* 40 */ and ? /* 60 */
   )
-  ```
+
+```
 
 ## 动态JOIN[​](#动态join "动态JOIN的直接链接")
 
 用户不但可以对当前被查询对象的属性施加过滤条件，还可以对关联对象的属性施加过滤条件，比如:
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.jetbrains.annotations.Nullable;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    // name -> `Book.name`  
-    // storeName -> `Book.store.name`  
-    List<Book> findByNameStartsWithAndStoreName(  
-        @Nullable String name,  
-        @Nullable String storeName  
-    );  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.jetbrains.annotations.Nullable;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    // name -> `Book.name`
+    // storeName -> `Book.store.name`
+    List<Book> findByNameStartsWithAndStoreName(
+        @Nullable String name,
+        @Nullable String storeName
+    );
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    // name -> `Book.name`  
-    // storeName -> `Book.store.name`  
-    fun findByNameStartsWithAndStoreName(  
-        name: String? = null,  
-        storeName: String? = null  
-    ): List<Book>  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface BookRepository : KRepository<Book, Long> {
+
+    // name -> `Book.name`
+    // storeName -> `Book.store.name`
+    fun findByNameStartsWithAndStoreName(
+        name: String? = null,
+        storeName: String? = null
+    ): List<Book>
 }
+
 ```
 
 这里，`findByNameStartWithAndStoreName`中的`StoreName`，其实是`store.name`。
@@ -350,402 +349,400 @@ interface BookRepository : KRepository<Book, Long> {
 
 备注
 
-* 仅当`storeName`参数被指定时，才会在SQL种生成JOIN
-* 能够被约定方法采用的关联必须是非集合关联（一对一、多对一）
+- 仅当`storeName`参数被指定时，才会在SQL种生成JOIN
+- 能够被约定方法采用的关联必须是非集合关联（一对一、多对一）
 
 让我们看看如何使用
 
-* 指定参数`name`，不生成JOIN
+- 指定参数`name`，不生成JOIN
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  List<Book> books = bookRepository  
+  ```list<book> books = bookrepository
       .findByNameStartsWithAndStoreName("G", null);
-  ```
 
-  ```
-  val books = bookRepository  
+```
+
+  ```val books = bookrepository
       .findByNameStartsWithAndStoreName("G")
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
   where tb_1_.NAME like ? /* G% */
-  ```
-* 指定参数`storeName`，生成JOIN
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
+- 指定参数`storeName`，生成JOIN
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
       .findByNameStartsWithAndStoreName(null, "MANNING");
-  ```
 
-  ```
-  val books = bookRepository  
+```
+
+  ```val books = bookrepository
       .findByNameStartsWithAndStoreName(null, "MANNING")
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_   
-  inner join BOOK_STORE as tb_2_   
-      on tb_1_.STORE_ID = tb_2_.ID   
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
+  inner join BOOK_STORE as tb_2_
+      on tb_1_.STORE_ID = tb_2_.ID
   where tb_2_.NAME = ? /* MANNING */
-  ```
+
+```
 
 ## 动态ORDER BY[​](#动态order-by "动态ORDER BY的直接链接")
 
 只要抽象方法具备一个`org.springframework.data.domain.Sort`类型的参数，就可以动态排序。例如：
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.jetbrains.annotations.Nullable;  
-import org.springframework.data.domain.Sort;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    List<Book> findByNameLikeIgnoreCase(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不需要任何参数，从基接口继承的方法足矣，无需定义此方法。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。  
-        @Nullable String name,  
-  
-        @Nullable Sort sort  
-    );  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.data.domain.Sort;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    List<Book> findByNameLikeIgnoreCase(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不需要任何参数，从基接口继承的方法足矣，无需定义此方法。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。
+        @Nullable String name,
+
+        @Nullable Sort sort
+    );
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-import org.springframework.data.domain.Sort  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    fun findByNameLikeIgnoreCase(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合 理。  
-        name: String? = null,  
-  
-        sort: Sort? = null  
-    ): List<Book>  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+import org.springframework.data.domain.Sort
+
+interface BookRepository : KRepository<Book, Long> {
+
+    fun findByNameLikeIgnoreCase(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合 理。
+        name: String? = null,
+
+        sort: Sort? = null
+    ): List<Book>
 }
+
 ```
 
 为了方便上层代码从前端接受排序字符串，Jimmer提供了辅助类`org.babyfish.jimmer.spring.model.SortUtils`，把客户端传递的字符串转化为`org.springframework.data.domain.Sort`。
 
 其使用方式为
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Sort sort = SortUtils.toSort(  
-    "store.name asc", "name asc", "edition desc"  
+```sort sort = sortutils.tosort(
+    "store.name asc", "name asc", "edition desc"
 );
-```
 
 ```
-val sort = SortUtils.toSort(  
-    "store.name asc", "name asc", "edition desc"  
+
+```val sort = sortutils.tosort(
+    "store.name asc", "name asc", "edition desc"
 )
+
 ```
 
 或
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Sort sort = SortUtils.toSort(  
-    "store.name asc, name asc, edition desc"  
+```sort sort = sortutils.tosort(
+    "store.name asc, name asc, edition desc"
 );
-```
 
 ```
-val sort = SortUtils.toSort(  
-    "store.name asc, name asc, edition desc"  
+
+```val sort = sortutils.tosort(
+    "store.name asc, name asc, edition desc"
 );
+
 ```
 
-* 不需要JOIN的ORDER BY
+- 不需要JOIN的ORDER BY
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  List<Book> books = bookRepository  
-      .findByName(  
-          null,   
-          SortUtils.toSort("name, edition desc")  
+  ```list<book> books = bookrepository
+      .findByName(
+          null,
+          SortUtils.toSort("name, edition desc")
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByName(  
-          null,   
-          SortUtils.toSort("name, edition desc")  
+```
+
+  ```val books = bookrepository
+      .findByName(
+          null,
+          SortUtils.toSort("name, edition desc")
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_  
-  order by   
-      tb_1_.NAME asc,   
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
+  order by
+      tb_1_.NAME asc,
       tb_1_.EDITION desc
-  ```
-* 需要JOIN的ORDER BY
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Book> books = bookRepository  
-      .findByName(  
-          null,   
-          SortUtils.toSort("store.name, name, edition desc")  
+- 需要JOIN的ORDER BY
+
+  - Java
+  - Kotlin
+
+  ```list<book> books = bookrepository
+      .findByName(
+          null,
+          SortUtils.toSort("store.name, name, edition desc")
       );
-  ```
 
-  ```
-  val books = bookRepository  
-      .findByName(  
-          null,   
-          SortUtils.toSort("store.name, name, edition desc")  
+```
+
+  ```val books = bookrepository
+      .findByName(
+          null,
+          SortUtils.toSort("store.name, name, edition desc")
       )
-  ```
+
+```
 
   生成的SQL如下(为了方便阅读，做了格式化)
 
-  ```
-  select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-  from BOOK as tb_1_   
-  left join BOOK_STORE as tb_2_   
-      on tb_1_.STORE_ID = tb_2_.ID   
-  order by   
-      tb_2_.NAME asc,   
-      tb_1_.NAME asc,   
+  ```select tb_1_.id, tb_1_.name, tb_1_.edition, tb_1_.price, tb_1_.store_id
+  from BOOK as tb_1_
+  left join BOOK_STORE as tb_2_
+      on tb_1_.STORE_ID = tb_2_.ID
+  order by
+      tb_2_.NAME asc,
+      tb_1_.NAME asc,
       tb_1_.EDITION desc
-  ```
+
+```
 
 ## 分页查询[​](#分页查询 "分页查询的直接链接")
 
 要进行分页操作，方法需要
 
-* 具备一个类型为`org.springframework.data.domain.Pageable`的参数
-* 返回`org.springframework.data.domain.Page<当前实体>`
+- 具备一个类型为`org.springframework.data.domain.Pageable`的参数
+- 返回`org.springframework.data.domain.Page<当前实体>`
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.jetbrains.annotations.Nullable;  
-import org.springframework.data.domain.Pageable;  
-import org.springframework.data.domain.Page;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    Page<Book> findByName(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不需要任何参数，从基接口继承的方法足矣，无需定义此方法。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。  
-        @Nullable String name,  
-  
-        Pageable pageable  
-    );  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    Page<Book> findByName(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不需要任何参数，从基接口继承的方法足矣，无需定义此方法。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。
+        @Nullable String name,
+
+        Pageable pageable
+    );
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-import org.springframework.data.domain.Pageable  
-import org.springframework.data.domain.Page  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    fun findByName(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合理。  
-        name: String? = null,  
-  
-        pageable: Pageable  
-  
-    ): Page<Book>  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Page
+
+interface BookRepository : KRepository<Book, Long> {
+
+    fun findByName(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合理。
+        name: String? = null,
+
+        pageable: Pageable
+
+    ): Page<Book>
 }
+
 ```
 
 用法如下
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Page<Book> page = bookRepository  
-    .findByName(  
-        null,   
-        PageRequest.of(  
-            1, // 从0开始，1表示第二页,  
-            5,  
-            SortUtils.toSort("name, edition desc")  
-        )  
+```page<book> page = bookrepository
+    .findByName(
+        null,
+        PageRequest.of(
+            1, // 从0开始，1表示第二页,
+            5,
+            SortUtils.toSort("name, edition desc")
+        )
     );
-```
 
 ```
-val page = bookRepository  
-    .findByName(  
-        null,   
-        PageRequest.of(  
-            1, // 从0开始，1表示第二页,  
-            5,  
-            SortUtils.toSort("name, edition desc")  
-        )  
+
+```val page = bookrepository
+    .findByName(
+        null,
+        PageRequest.of(
+            1, // 从0开始，1表示第二页,
+            5,
+            SortUtils.toSort("name, edition desc")
+        )
     )
+
 ```
 
 返回的Page对象如下
 
-```
-{  
-    "content":[  
-        {  
-            "id":10,  
-            "name":"GraphQL in Action",  
-            "edition":1,  
-            "price":80,  
-            "store":{  
-                "id":2  
-            }  
-        },  
-        {  
-            "id":3,  
-            "name":"Learning GraphQL",  
-            "edition":3,  
-            "price":51,  
-            "store":{  
-                "id":1  
-            }  
-        },  
-        {  
-            "id":2,  
-            "name":"Learning GraphQL",  
-            "edition":2,  
-            "price":55,  
-            "store":{  
-                "id":1  
-            }  
-        },  
-        {  
-            "id":1,  
-            "name":"Learning GraphQL",  
-            "edition":1,  
-            "price":45,  
-            "store":{  
-                "id":1  
-            }  
-        },  
-        {  
-            "id":9,  
-            "name":"Programming TypeScript",  
-            "edition":3,  
-            "price":48,  
-            "store":{  
-                "id":1  
-            }  
-        }  
-    ],  
-    "pageable":{  
-        "sort":{  
-            "unsorted":false,  
-            "sorted":true,  
-            "empty":false  
-        },  
-        "pageNumber":1,  
-        "pageSize":5,  
-        "offset":5,  
-        "paged":true,  
-        "unpaged":false  
-    },  
-    "totalPages":3,  
-    "totalElements":12,  
-    "last":false,  
-    "numberOfElements":5,  
-    "first":false,  
-    "sort":{  
-        "unsorted":false,  
-        "sorted":true,  
-        "empty":false  
-    },  
-    "number":1,  
-    "size":5,  
-    "empty":false  
+```{
+    "content":[
+        {
+            "id":10,
+            "name":"GraphQL in Action",
+            "edition":1,
+            "price":80,
+            "store":{
+                "id":2
+            }
+        },
+        {
+            "id":3,
+            "name":"Learning GraphQL",
+            "edition":3,
+            "price":51,
+            "store":{
+                "id":1
+            }
+        },
+        {
+            "id":2,
+            "name":"Learning GraphQL",
+            "edition":2,
+            "price":55,
+            "store":{
+                "id":1
+            }
+        },
+        {
+            "id":1,
+            "name":"Learning GraphQL",
+            "edition":1,
+            "price":45,
+            "store":{
+                "id":1
+            }
+        },
+        {
+            "id":9,
+            "name":"Programming TypeScript",
+            "edition":3,
+            "price":48,
+            "store":{
+                "id":1
+            }
+        }
+    ],
+    "pageable":{
+        "sort":{
+            "unsorted":false,
+            "sorted":true,
+            "empty":false
+        },
+        "pageNumber":1,
+        "pageSize":5,
+        "offset":5,
+        "paged":true,
+        "unpaged":false
+    },
+    "totalPages":3,
+    "totalElements":12,
+    "last":false,
+    "numberOfElements":5,
+    "first":false,
+    "sort":{
+        "unsorted":false,
+        "sorted":true,
+        "empty":false
+    },
+    "number":1,
+    "size":5,
+    "empty":false
 }
+
 ```
 
 生成的SQL如下(为了方便阅读，做了格式化)
 
-```
-/* 第一步：查询分页前记录总行数 */  
-select count(tb_1_.ID) from BOOK as tb_1_  
-  
-/* 第二步： 查询一页面之内的数据 */  
-select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-from BOOK as tb_1_   
-order by   
-    tb_1_.NAME asc,   
-    tb_1_.EDITION desc  
-/* MySQL分页 */   
+```/* 第一步：查询分页前记录总行数 */
+select count(tb_1_.ID) from BOOK as tb_1_
+
+/* 第二步： 查询一页面之内的数据 */
+select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID
+from BOOK as tb_1_
+order by
+    tb_1_.NAME asc,
+    tb_1_.EDITION desc
+/* MySQL分页 */
 limit ?, /* 5(offset) */ ? /* 5(limit) */
+
 ```
 
 ## 对象抓取器[​](#对象抓取器 "对象抓取器的直接链接")
@@ -754,298 +751,296 @@ limit ?, /* 5(offset) */ ? /* 5(limit) */
 
 让抽象方法具备一个类型为`org.babyfish.jimmer.sql.fetcher.Fetcher<当前实体>`的参数即可。
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookRepository.java
 
-```
-package com.example.repository;  
-  
-import com.example.model.Book;  
-  
-import org.babyfish.jimmer.spring.repository.JRepository;  
-import org.babyfish.jimmer.sql.fetcher.Fetcher;  
-import org.jetbrains.annotations.Nullable;  
-import org.springframework.data.domain.Pageable;  
-import org.springframework.data.domain.Page;  
-  
-public interface BookRepository extends JRepository<Book, Long> {  
-  
-    Page<Book> findByName(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不  需要任何参数，从基接口继承的方法足矣，无需定义此方法。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。  
-        @Nullable String name,  
-  
-        Pageable pageable,  
-  
-        @Nullable Fetcher<Book> fetcher  
-    );  
+```package com.example.repository;
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+
+public interface BookRepository extends JRepository<Book, Long> {
+
+    Page<Book> findByName(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不  需要任何参数，从基接口继承的方法足矣，无需定义此方法。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象方法看起来合理。
+        @Nullable String name,
+
+        Pageable pageable,
+
+        @Nullable Fetcher<Book> fetcher
+    );
 }
+
 ```
 
 BookRepository.kt
 
-```
-package com.example.repository  
-  
-import com.example.model.Book  
-  
-import org.babyfish.jimmer.spring.repository.KRepository  
-import org.babyfish.jimmer.sql.fetcher.Fetcher  
-import org.springframework.data.domain.Pageable  
-import org.springframework.data.domain.Page  
-  
-interface BookRepository : KRepository<Book, Long> {  
-  
-    fun findByName(  
-  
-        // 后续例子不用此参数，总是给null。  
-        // 原因：  
-        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。  
-        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合理。  
-        name: String? = null,  
-  
-        pageable: Pageable,  
-  
-        fetcher: Fetcher<Book>? = null  
-    ): Page<Book>  
+```package com.example.repository
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+import org.babyfish.jimmer.sql.fetcher.Fetcher
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Page
+
+interface BookRepository : KRepository<Book, Long> {
+
+    fun findByName(
+
+        // 后续例子不用此参数，总是给null。
+        // 原因：
+        // 如果一个查询不需要任何参数，从基接口继承的函数足矣，无需定义此函数。
+        // 本例中，此参数的存在的价值，仅仅是为了让当前自定义抽象函数看起来合理。
+        name: String? = null,
+
+        pageable: Pageable,
+
+        fetcher: Fetcher<Book>? = null
+    ): Page<Book>
 }
+
 ```
 
 如果不传递Fetcher或者传递简单对象的形状，结果必然和前面例子相似，没必要重复。
 
 所以，我们直接演示查询复杂数据结构
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-Page<Book> page = bookRepository  
-    .findByName(  
-        null,   
-        PageRequest.of(  
-            1, // 从0开始，1表示第二页,  
-            5,  
-            SortUtils.toSort("name, edition desc")  
-        ),  
-        Fetchers.BOOK_FETCHER  
-            .allScalarFields()  
-            .store(  
-                Fetchers.BOOK_FETCHER  
-                    .name() // 关联对象仅查询id(隐含+强制)和name  
-            )  
-            .authors(  
-                Fetchers.AUTHOR_FETCHER  
-                    // 关联对象仅查询id(隐含+强制)、firstName和lastName  
-                    .firstName().lastName()  
-            )  
+```page<book> page = bookrepository
+    .findByName(
+        null,
+        PageRequest.of(
+            1, // 从0开始，1表示第二页,
+            5,
+            SortUtils.toSort("name, edition desc")
+        ),
+        Fetchers.BOOK_FETCHER
+            .allScalarFields()
+            .store(
+                Fetchers.BOOK_FETCHER
+                    .name() // 关联对象仅查询id(隐含+强制)和name
+            )
+            .authors(
+                Fetchers.AUTHOR_FETCHER
+                    // 关联对象仅查询id(隐含+强制)、firstName和lastName
+                    .firstName().lastName()
+            )
     );
-```
 
 ```
-val page = bookRepository  
-    .findByName(  
-        null,   
-        PageRequest.of(  
-            1, // 从0开始，1表示第二页,  
-            5,  
-            SortUtils.toSort("name, edition desc")  
-        ),  
-        newFetcher(Book::class).by {  
-            allScalarFields()  
-            store {  
-                // 关联对象仅查询id(隐含+强制)和name  
-                name()  
-            }  
-            authors {  
-                //   关联对象仅查询id(隐含+强制)、firstName和lastName  
-                firstName()  
-                lastName()  
-            }  
-        }  
+
+```val page = bookrepository
+    .findByName(
+        null,
+        PageRequest.of(
+            1, // 从0开始，1表示第二页,
+            5,
+            SortUtils.toSort("name, edition desc")
+        ),
+        newFetcher(Book::class).by {
+            allScalarFields()
+            store {
+                // 关联对象仅查询id(隐含+强制)和name
+                name()
+            }
+            authors {
+                //   关联对象仅查询id(隐含+强制)、firstName和lastName
+                firstName()
+                lastName()
+            }
+        }
     )
+
 ```
 
 返回的Page对象如下
 
-```
-{  
-    "content":[  
-        {  
-            "id":10,  
-            "name":"GraphQL in Action",  
-            "edition":1,  
-            "price":80,  
-            "store":{  
-                "id":2,  
-                "name":"MANNING"  
-            },  
-            "authors":[  
-                {  
-                    "id":5,  
-                    "firstName":"Samer",  
-                    "lastName":"Buna"  
-                }  
-            ]  
-        },  
-        {  
-            "id":3,  
-            "name":"Learning GraphQL",  
-            "edition":3,  
-            "price":51,  
-            "store":{  
-                "id":1,  
-                "name":"O'REILLY"  
-            },  
-            "authors":[  
-                {  
-                    "id":2,  
-                    "firstName":"Alex",  
-                    "lastName":"Banks"  
-                },  
-                {  
-                    "id":1,  
-                    "firstName":"Eve",  
-                    "lastName":"Procello"  
-                }  
-            ]  
-        },  
-        {  
-            "id":2,  
-            "name":"Learning GraphQL",  
-            "edition":2,  
-            "price":55,  
-            "store":{  
-                "id":1,  
-                "name":"O'REILLY"  
-            },  
-            "authors":[  
-                {  
-                    "id":2,  
-                    "firstName":"Alex",  
-                    "lastName":"Banks"  
-                },  
-                {  
-                    "id":1,  
-                    "firstName":"Eve",  
-                    "lastName":"Procello"  
-                }  
-            ]  
-        },  
-        {  
-            "id":1,  
-            "name":"Learning GraphQL",  
-            "edition":1,  
-            "price":45,  
-            "store":{  
-                "id":1,  
-                "name":"O'REILLY"  
-            },  
-            "authors":[  
-                {  
-                    "id":2,  
-                    "firstName":"Alex",  
-                    "lastName":"Banks"  
-                },  
-                {  
-                    "id":1,  
-                    "firstName":"Eve",  
-                    "lastName":"Procello"  
-                }  
-            ]  
-        },  
-        {  
-            "id":9,  
-            "name":"Programming TypeScript",  
-            "edition":3,  
-            "price":48,  
-            "store":{  
-                "id":1,  
-                "name":"O'REILLY"  
-            },  
-            "authors":[  
-                {  
-                    "id":4,  
-                    "firstName":"Boris",  
-                    "lastName":"Cherny"  
-                }  
-            ]  
-        }  
-    ],  
-    "pageable":{  
-        "sort":{  
-            "unsorted":false,  
-            "sorted":true,  
-            "empty":false  
-        },  
-        "pageNumber":1,  
-        "pageSize":5,  
-        "offset":5,  
-        "paged":true,  
-        "unpaged":false  
-    },  
-    "totalPages":3,  
-    "totalElements":12,  
-    "last":false,  
-    "sort":{  
-        "unsorted":false,  
-        "sorted":true,  
-        "empty":false  
-    },  
-    "numberOfElements":5,  
-    "number":1,  
-    "first":false,  
-    "size":5,  
-    "empty":false  
+```{
+    "content":[
+        {
+            "id":10,
+            "name":"GraphQL in Action",
+            "edition":1,
+            "price":80,
+            "store":{
+                "id":2,
+                "name":"MANNING"
+            },
+            "authors":[
+                {
+                    "id":5,
+                    "firstName":"Samer",
+                    "lastName":"Buna"
+                }
+            ]
+        },
+        {
+            "id":3,
+            "name":"Learning GraphQL",
+            "edition":3,
+            "price":51,
+            "store":{
+                "id":1,
+                "name":"O'REILLY"
+            },
+            "authors":[
+                {
+                    "id":2,
+                    "firstName":"Alex",
+                    "lastName":"Banks"
+                },
+                {
+                    "id":1,
+                    "firstName":"Eve",
+                    "lastName":"Procello"
+                }
+            ]
+        },
+        {
+            "id":2,
+            "name":"Learning GraphQL",
+            "edition":2,
+            "price":55,
+            "store":{
+                "id":1,
+                "name":"O'REILLY"
+            },
+            "authors":[
+                {
+                    "id":2,
+                    "firstName":"Alex",
+                    "lastName":"Banks"
+                },
+                {
+                    "id":1,
+                    "firstName":"Eve",
+                    "lastName":"Procello"
+                }
+            ]
+        },
+        {
+            "id":1,
+            "name":"Learning GraphQL",
+            "edition":1,
+            "price":45,
+            "store":{
+                "id":1,
+                "name":"O'REILLY"
+            },
+            "authors":[
+                {
+                    "id":2,
+                    "firstName":"Alex",
+                    "lastName":"Banks"
+                },
+                {
+                    "id":1,
+                    "firstName":"Eve",
+                    "lastName":"Procello"
+                }
+            ]
+        },
+        {
+            "id":9,
+            "name":"Programming TypeScript",
+            "edition":3,
+            "price":48,
+            "store":{
+                "id":1,
+                "name":"O'REILLY"
+            },
+            "authors":[
+                {
+                    "id":4,
+                    "firstName":"Boris",
+                    "lastName":"Cherny"
+                }
+            ]
+        }
+    ],
+    "pageable":{
+        "sort":{
+            "unsorted":false,
+            "sorted":true,
+            "empty":false
+        },
+        "pageNumber":1,
+        "pageSize":5,
+        "offset":5,
+        "paged":true,
+        "unpaged":false
+    },
+    "totalPages":3,
+    "totalElements":12,
+    "last":false,
+    "sort":{
+        "unsorted":false,
+        "sorted":true,
+        "empty":false
+    },
+    "numberOfElements":5,
+    "number":1,
+    "first":false,
+    "size":5,
+    "empty":false
 }
+
 ```
 
 生成的SQL如下(为了方便阅读，做了格式化)
 
-```
-/* 第一步：查询分页前记录总行数 */  
-select count(tb_1_.ID) from BOOK as tb_1_  
-  
-/* 第二步：查询一页面之内的聚合根对象 */  
-select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID   
-from BOOK as tb_1_   
-order by   
-    tb_1_.NAME asc,   
-    tb_1_.EDITION desc  
-/* MySQL分页 */   
-limit ?, /* 5(offset) */ ? /* 5(limit) */  
-  
-/*   
- * 第三步：为分页后的5条数据（非分页前的12条数据）  
- * 查询属性`Book.store`所关联的对象  
- *   
- * 注意：  
- * 当前情况下，这5条记录的外键`STORE_ID`会被查询，这时，直接通过外键找父对象。  
- * 虽然数据有5条，但是外键只有两个取值，所以，SQL参数只有两个。  
- */  
-select tb_1_.ID, tb_1_.NAME   
-from BOOK_STORE as tb_1_   
-where tb_1_.ID in (  
-    ?, ?  
-    /* 实际参数列表：2， 1 */  
-)  
-  
-/*   
- * 第四步：为分页后的5条数据（非分页前的12条数据）  
- * 查询属性`Book.authors`所关联的对象   
- */  
-select tb_2_.BOOK_ID, tb_1_.ID, tb_1_.FIRST_NAME, tb_1_.LAST_NAME   
-from AUTHOR as tb_1_   
-inner join BOOK_AUTHOR_MAPPING as tb_2_   
-    on tb_1_.ID = tb_2_.AUTHOR_ID   
-where tb_2_.BOOK_ID in (  
-    ?, ?, ?, ?, ?  
-    /* 实际参数列表：10, 3, 2, 1, 9 */  
+```/* 第一步：查询分页前记录总行数 */
+select count(tb_1_.ID) from BOOK as tb_1_
+
+/* 第二步：查询一页面之内的聚合根对象 */
+select tb_1_.ID, tb_1_.NAME, tb_1_.EDITION, tb_1_.PRICE, tb_1_.STORE_ID
+from BOOK as tb_1_
+order by
+    tb_1_.NAME asc,
+    tb_1_.EDITION desc
+/* MySQL分页 */
+limit ?, /* 5(offset) */ ? /* 5(limit) */
+
+/*
+ - 第三步：为分页后的5条数据（非分页前的12条数据）
+ - 查询属性`Book.store`所关联的对象
+ -
+ - 注意：
+ - 当前情况下，这5条记录的外键`STORE_ID`会被查询，这时，直接通过外键找父对象。
+ - 虽然数据有5条，但是外键只有两个取值，所以，SQL参数只有两个。
+ - /
+select tb_1_.ID, tb_1_.NAME
+from BOOK_STORE as tb_1_
+where tb_1_.ID in (
+    ?, ?
+    /* 实际参数列表：2， 1 */
 )
+
+/*
+ - 第四步：为分页后的5条数据（非分页前的12条数据）
+ - 查询属性`Book.authors`所关联的对象
+ - /
+select tb_2_.BOOK_ID, tb_1_.ID, tb_1_.FIRST_NAME, tb_1_.LAST_NAME
+from AUTHOR as tb_1_
+inner join BOOK_AUTHOR_MAPPING as tb_2_
+    on tb_1_.ID = tb_2_.AUTHOR_ID
+where tb_2_.BOOK_ID in (
+    ?, ?, ?, ?, ?
+    /* 实际参数列表：10, 3, 2, 1, 9 */
+)
+
 ```
 
 提示

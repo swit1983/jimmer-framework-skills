@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/get-started/define-entity
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* [快速上手](/zh/docs/quick-view/get-started/)
-* 定义实体
+- [快速预览 ★](/zh/docs/quick-view/)
+- [快速上手](/zh/docs/quick-view/get-started/)
+- 定义实体
 
 本页总览
 
@@ -14,295 +14,288 @@
 
 在定义实体之前，需要声明两个概念：
 
-* Jimmer中实体对象并非简单的Java Bean，而是动态对象。
+- Jimmer中实体对象并非简单的Java Bean，而是动态对象。
 
-  **即，某个属性未被设置和某个属性被设置为null，是完全不同的。**
-* Jimmer实体是不可变对象，因此，接口中指存在getter，不存在setter。
+  - *即，某个属性未被设置和某个属性被设置为null，是完全不同的。**
+- Jimmer实体是不可变对象，因此，接口中指存在getter，不存在setter。
 
 ## 定义非关联字段[​](#定义非关联字段 "定义非关联字段的直接链接")
 
 假设实体所在的包为"com.example.model"，**先忽略关联属性**，各实体定义如下。
 
-* BookStore
+- BookStore
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
   BookStore.java
 
-  ```
-  package com.example.model;  
-    
-  import org.babyfish.jimmer.sql.*;  
-  import org.jetbrains.annotations.Nullable;  
-    
-  @Entity  
-  public interface BookStore {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      long id();  
-    
-      @Key  
-      String name();  
-    
-      @Nullable  
-      String website();  
+  ```package com.example.model;
+  import org.babyfish.jimmer.sql.*;
+  import org.jetbrains.annotations.Nullable;
+
+  @Entity
+  public interface BookStore {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      long id();
+
+      @Key
+      String name();
+
+      @Nullable
+      String website();
   }
-  ```
+
+```
 
   BookStore.kt
 
-  ```
-  package com.example.model  
-    
-  import org.babyfish.jimmer.sql.*  
-    
-  @Entity  
-  interface BookStore {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      val id: Long  
-    
-      @Key  
-      val name: String  
-    
-      val website: String?  
-  }
-  ```
-* Book
+  ```package com.example.model
+  import org.babyfish.jimmer.sql.*
 
-  + Java
-  + Kotlin
+  @Entity
+  interface BookStore {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      val id: Long
+
+      @Key
+      val name: String
+
+      val website: String?
+  }
+
+```
+
+- Book
+
+  - Java
+  - Kotlin
 
   Book.java
 
-  ```
-  package com.example.model;  
-    
-  import org.babyfish.jimmer.sql.*;  
-  import java.math.BigDecimal;  
-    
-  @Entity  
-  public interface Book {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      long id();  
-    
-      @Key  
-      String name();  
-    
-      @Key  
-      int edition();  
-    
-      BigDecimal price();  
+  ```package com.example.model;
+  import org.babyfish.jimmer.sql.*;
+  import java.math.BigDecimal;
+
+  @Entity
+  public interface Book {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      long id();
+
+      @Key
+      String name();
+
+      @Key
+      int edition();
+
+      BigDecimal price();
   }
-  ```
+
+```
 
   Book.kt
 
-  ```
-  package com.example.model  
-    
-  import org.babyfish.jimmer.sql.*  
-  import java.math.BigDecimal  
-    
-  @Entity  
-  interface Book {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      val id: Long  
-    
-      @Key  
-      val name: String  
-    
-      @Key  
-      val edition: Int  
-    
-      val price: BigDecimal  
-  }
-  ```
-* Author
+  ```package com.example.model
+  import org.babyfish.jimmer.sql.*
+  import java.math.BigDecimal
 
-  + Java
-  + Kotlin
+  @Entity
+  interface Book {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      val id: Long
+
+      @Key
+      val name: String
+
+      @Key
+      val edition: Int
+
+      val price: BigDecimal
+  }
+
+```
+
+- Author
+
+  - Java
+  - Kotlin
 
   Author.java
 
-  ```
-  package com.example.model;  
-    
-  import org.babyfish.jimmer.sql.*;  
-    
-  @Entity  
-  public interface Author {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      long id();  
-    
-      @Key  
-      String firstName();  
-    
-      @Key  
-      String lastName();  
-    
-      /*  
-       * 这里，Gender是一个枚举，代码稍后给出  
-       */  
-      Gender gender();  
+  ```package com.example.model;
+  import org.babyfish.jimmer.sql.*;
+
+  @Entity
+  public interface Author {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      long id();
+
+      @Key
+      String firstName();
+
+      @Key
+      String lastName();
+
+      /*
+       - 这里，Gender是一个枚举，代码稍后给出
+       - /
+      Gender gender();
   }
-  ```
+
+```
 
   Author.kt
 
-  ```
-  package com.example.model  
-    
-  import org.babyfish.jimmer.sql.*  
-    
-  @Entity  
-  interface Author {  
-    
-      @Id  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      val id: Long  
-    
-      @Key  
-      val firstName: String  
-    
-      @Key  
-      val lastName: String  
-    
-      /*  
-       * 这里，Gender是一个枚举，，代码稍后给出  
-       */  
-      val gender: Gender  
+  ```package com.example.model
+  import org.babyfish.jimmer.sql.*
+
+  @Entity
+  interface Author {
+
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      val id: Long
+
+      @Key
+      val firstName: String
+
+      @Key
+      val lastName: String
+
+      /*
+       - 这里，Gender是一个枚举，，代码稍后给出
+       - /
+      val gender: Gender
   }
-  ```
+
+```
 
   其中`Gender`是一个枚举，只有两个选项：`MALE`和`FEMALE`。
 
   ORM处理枚举有两种方式：
 
-  + 映射为字符串：可观察性优先的选择，也是默认的选择。
-  + 映射为数字：性能优先的选择。
+  - 映射为字符串：可观察性优先的选择，也是默认的选择。
+  - 映射为数字：性能优先的选择。
 
   虽然本教程示例按照默认方式把枚举映射成字符串，但数据库中check约束限定的取值是`M`和`F`，并非默认的`MALE`和`FEMALE`，所以，这个枚举需要配置如下。
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
   Gender.java
 
-  ```
-  package com.example.model;  
-    
-  import org.babyfish.jimmer.sql.EnumItem;  
-    
-  public enum Gender {  
-    
-      @EnumItem(name = "M")  
-      MALE,  
-    
-      @EnumItem(name = "F")  
-      FEMALE  
+  ```package com.example.model;
+  import org.babyfish.jimmer.sql.EnumItem;
+
+  public enum Gender {
+
+      @EnumItem(name = "M")
+      MALE,
+
+      @EnumItem(name = "F")
+      FEMALE
   }
-  ```
+
+```
 
   Gender.kt
 
-  ```
-  package com.example.model  
-    
-  import org.babyfish.jimmer.sql.EnumItem  
-    
-  enum class Gender {  
-    
-      @EnumItem(name = "M")  
-      MALE,  
-    
-      @EnumItem(name = "F")  
-      FEMALE  
+  ```package com.example.model
+  import org.babyfish.jimmer.sql.EnumItem
+
+  enum class Gender {
+
+      @EnumItem(name = "M")
+      MALE,
+
+      @EnumItem(name = "F")
+      FEMALE
   }
-  ```
+
+```
 
   信息
 
   完整的自定义标量类型的映射，请参见**TODO**
-* TreeNode
+- TreeNode
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
   TreeNode.java
 
-  ```
-  package com.example.model;  
-    
-  import org.babyfish.jimmer.sql.*;  
-    
-  @Entity  
-  public interface TreeNode {  
-    
-      @Id  
-      @Column(name = "NODE_ID")  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      long id();  
-    
-      String name();  
+  ```package com.example.model;
+  import org.babyfish.jimmer.sql.*;
+
+  @Entity
+  public interface TreeNode {
+
+      @Id
+      @Column(name = "NODE_ID")
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      long id();
+
+      String name();
   }
-  ```
+
+```
 
   TreeNode.kt
 
-  ```
-  package com.example.model  
-    
-  import org.babyfish.jimmer.sql.*  
-    
-  @Entity  
-  interface TreeNode {  
-    
-      @Id  
-      @Column(name = "NODE_ID")  
-      @GeneratedValue(strategy = GenerationType.IDENTITY)  
-      val id: Long  
-    
-      val name: String  
+  ```package com.example.model
+  import org.babyfish.jimmer.sql.*
+
+  @Entity
+  interface TreeNode {
+
+      @Id
+      @Column(name = "NODE_ID")
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      val id: Long
+
+      val name: String
   }
-  ```
-* 对于Java而言，每一个getter，既可以采用传统Java Bean那种`get/is`开头的方方式，比如`getName()`，也可以采用当前例子中不用`get/is`开头的方式，比如`name()`。
+
+```
+
+- 对于Java而言，每一个getter，既可以采用传统Java Bean那种`get/is`开头的方方式，比如`getName()`，也可以采用当前例子中不用`get/is`开头的方式，比如`name()`。
 
   备注
 
   打破传统Java Bean中getter方法必须以`get/is`开头的规则的并非Jimmer，而是Java14引入的record类型。这种新的风格可以让不可变对象的书写变得更简单。
-* Jimmer实体对每个属性是否为null非常敏感。
+- Jimmer实体对每个属性是否为null非常敏感。
 
-  + 对于kotlin而言，采用语言本身的nullity描述。
-  + 对于Java而言：
+  - 对于kotlin而言，采用语言本身的nullity描述。
+  - 对于Java而言：
     - boolean, char, byte, short, int, long, float, double表示不能为null
     - Boolean, Character, Byte, Short, Integer, Long, Float, Double表示允许为null
     - 其他类型默认不能为null，如果期望允许为null，请加注解`@org.jetbrains.annotations.Nullable`、`@javax.validation.constraints.Null`或`@org.springframework.lang.Nullable`
-* 例子使用的注解:
+- 例子使用的注解:
 
-  + `@org.babyfish.jimmer.sql.Entity`: 指定实体类型。
-  + `@org.babyfish.jimmer.sql.Id`: 指定id属性。
-  + `@org.babyfish.jimmer.sql.GeneratedValue`: 指定id自动分配策略，这里使用数据库的自动编号。
-* 代码中Java/Kotlin接口的短名，按照`word1Word2...WordN -> WORD1_WORD2_..._WORDN`的规则转换后，和数据库中对应的表名完全匹配。
+  - `@org.babyfish.jimmer.sql.Entity`: 指定实体类型。
+  - `@org.babyfish.jimmer.sql.Id`: 指定id属性。
+  - `@org.babyfish.jimmer.sql.GeneratedValue`: 指定id自动分配策略，这里使用数据库的自动编号。
+- 代码中Java/Kotlin接口的短名，按照`word1Word2...WordN -> WORD1_WORD2_..._WORDN`的规则转换后，和数据库中对应的表名完全匹配。
 
   如果Java/Kotlin接口的短名和数据库表名无法自动匹配，请用`@org.babyfish.jimmer.sql.Table`修饰接口。
-* 同理，代码中Java/Kotlin属性，按照上述规则转换后，和数据库中对应的列名完全匹配。
+- 同理，代码中Java/Kotlin属性，按照上述规则转换后，和数据库中对应的列名完全匹配。
 
   如果Java/Kotlin属性名和数据库列名无法自动匹配，请用`@org.babyfish.jimmer.sql.Column`修饰属性。
 
   备注
 
   注意：该注解仅可用于修饰非关联字段，而非下文要讨论的外键字段
-* Jimmer实体是动态对象，没有id的对象，就是id未被设置的对象，而非id被设置为null的对象。Jimmer不需要让id可以为null。
+- Jimmer实体是动态对象，没有id的对象，就是id未被设置的对象，而非id被设置为null的对象。Jimmer不需要让id可以为null。
 
   所以，代码中id属性的类型为不能为null的`long`，而非可以为null的`Long`，否则框架会报错提示。
 
@@ -314,46 +307,44 @@
 
 修改`Book.java`/`Book.kt`，添加一个关联属性`store`
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Book.java
 
-```
-package com.example.model;  
-  
-...省略导入语句...  
-  
-@Entity  
-public interface Book {  
-  
-    ...省略其他属性...  
-  
-    @ManyToOne  
-    @Nullable  
-    BookStore store();  
+```package com.example.model;
+...省略导入语句...
+
+@Entity
+public interface Book {
+
+    ...省略其他属性...
+
+    @ManyToOne
+    @Nullable
+    BookStore store();
 }
+
 ```
 
 Book.kt
 
-```
-package com.example.model  
-  
-...省略导入语句...  
-  
-@Entity  
-interface Book {  
-  
-    ...省略其他属性...  
-  
-    @ManyToOne  
-    val store: BookStore?  
+```package com.example.model
+...省略导入语句...
+
+@Entity
+interface Book {
+
+    ...省略其他属性...
+
+    @ManyToOne
+    val store: BookStore?
 }
+
 ```
 
-* `@org.babyfish.jimmer.sql.ManyToOne`声明多对一关联属性，将数据库的外键字段映射为关联对象。
-* 代码中Java/Kotlin属性，按照`word1Word2...WordN -> WORD1_WORD2_..._WORDN_ID`的规则转换，即`store -> STORE_ID`，结果和数据库中外键的列名完全匹配。
+- `@org.babyfish.jimmer.sql.ManyToOne`声明多对一关联属性，将数据库的外键字段映射为关联对象。
+- 代码中Java/Kotlin属性，按照`word1Word2...WordN -> WORD1_WORD2_..._WORDN_ID`的规则转换，即`store -> STORE_ID`，结果和数据库中外键的列名完全匹配。
 
   如果Java/Kotlin属性名和数据库列名无法自动匹配，请用`@org.babyfish.jimmer.sql.JoinColumn`修饰属性。
 
@@ -361,142 +352,138 @@ interface Book {
 
 修改`BookStore.java`/`BookStore.kt`，添加一个关联属性`books`
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BookStore.java
 
-```
-package com.example.model;  
-  
-...省略导入语句...  
-  
-@Entity  
-public interface BookStore {  
-  
-    ...省略其他属性...  
-  
-    @OneToMany(mappedBy = "store")  
-    List<Book> books();  
+```package com.example.model;
+...省略导入语句...
+
+@Entity
+public interface BookStore {
+
+    ...省略其他属性...
+
+    @OneToMany(mappedBy = "store")
+    List<Book> books();
 }
+
 ```
 
 BookStore.kt
 
-```
-package com.example.model  
-  
-...省略导入语句...  
-  
-@Entity  
-interface BookStore {  
-  
-    ...省略其他属性...  
-  
-    @OneToMany(mappedBy = "store")  
-    val books: List<Book>  
+```package com.example.model
+...省略导入语句...
+
+@Entity
+interface BookStore {
+
+    ...省略其他属性...
+
+    @OneToMany(mappedBy = "store")
+    val books: List<Book>
 }
+
 ```
 
-* `@org.babyfish.jimmer.sql.OneToMany`声明对一对多关联。
+- `@org.babyfish.jimmer.sql.OneToMany`声明对一对多关联。
 
   一对多关联并不映射数据库中的任何字段，它仅用于对另一个多对一关联做镜像映射，将实体之间单向关联变成双向关联。
 
   这里，`@ManyToOne(mappedBy = "store")`，指当前属性`BookStore.books`是`Book.store`的镜像。
 
-  ```
-  @Entity  
-  public interface BookStore {  
-    
-      @OneToMany(  
-          mappedBy = "store"  
-      )  
-      List<Book> books();  
-    
-      ...  
+  ```@entity
+  public interface BookStore {
+
+      @OneToMany(
+          mappedBy = "store"
+      )
+      List<Book> books();
+
+      ...
   }
-  ```
+
+```
 
   ![mirror](data:image/svg+xml;base64,PHN2ZyBpZD0iU3ZnanNTdmcxMDAxIiB3aWR0aD0iMTI5LjUiIGhlaWdodD0iMjM5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnN2Z2pzPSJodHRwOi8vc3ZnanMuY29tL3N2Z2pzIj48ZGVmcyBpZD0iU3ZnanNEZWZzMTAwMiI+PC9kZWZzPjxnIGlkPSJTdmdqc0cxMDA4Ij48cGF0aCBpZD0iU3ZnanNQYXRoMTAwOSIgZD0iTTY1IDI1TDY1IDExOS41TDY1IDExOS41TDY1IDIxNCIgc3Ryb2tlPSIjMzIzMjMyIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiPjwvcGF0aD48L2c+PGcgaWQ9IlN2Z2pzRzEwMTAiIHRyYW5zZm9ybT0ibWF0cml4KDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywxLC0xLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywxMDUsMjcpIj48cGF0aCBpZD0iU3ZnanNQYXRoMTAxMSIgZD0iTSAwIDBMIDE4NCAwTCAxNzQgMjBMIDEwIDIwTCAwIDBaIiBzdHJva2U9InJnYmEoMzMsNDEsNDgsMSkiIHN0cm9rZS13aWR0aD0iMiIgZmlsbC1vcGFjaXR5PSIxIiBmaWxsPSIjZmZmZmZmIj48L3BhdGg+PGcgaWQ9IlN2Z2pzRzEwMTIiPjx0ZXh0IGlkPSJTdmdqc1RleHQxMDEzIiBmb250LWZhbWlseT0i5b6u6L2v6ZuF6buRIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzcHgiIHdpZHRoPSIxNDhweCIgZmlsbD0iIzMyMzIzMiIgZm9udC13ZWlnaHQ9IjQwMCIgYWxpZ249Im1pZGRsZSIgbGluZUhlaWdodD0iMTI1JSIgYW5jaG9yPSJtaWRkbGUiIGZhbWlseT0i5b6u6L2v6ZuF6buRIiBzaXplPSIxM3B4IiB3ZWlnaHQ9IjQwMCIgZm9udC1zdHlsZT0iIiBvcGFjaXR5PSIxIiB5PSItMC42MjUiIHRyYW5zZm9ybT0icm90YXRlKDApIj48L3RleHQ+PC9nPjwvZz48ZyBpZD0iU3ZnanNHMTAxNCIgdHJhbnNmb3JtPSJtYXRyaXgoLTEuODM2OTcwMTk4NzIxMDI5N2UtMTYsLTEsMSwtMS44MzY5NzAxOTg3MjEwMjk3ZS0xNiwyNS41MDAwMDAwMDAwMDAwMTgsMjEzLjUpIj48cGF0aCBpZD0iU3ZnanNQYXRoMTAxNSIgZD0iTSAwIDBMIDE4NyAwTCAxNzcgMjBMIDEwIDIwTCAwIDBaIiBzdHJva2U9InJnYmEoMzMsNDEsNDgsMSkiIHN0cm9rZS13aWR0aD0iMiIgZmlsbC1vcGFjaXR5PSIxIiBmaWxsPSIjZmZmZmZmIj48L3BhdGg+PGcgaWQ9IlN2Z2pzRzEwMTYiPjx0ZXh0IGlkPSJTdmdqc1RleHQxMDE3IiBmb250LWZhbWlseT0i5b6u6L2v6ZuF6buRIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzcHgiIHdpZHRoPSIxNTBweCIgZmlsbD0iIzMyMzIzMiIgZm9udC13ZWlnaHQ9IjQwMCIgYWxpZ249Im1pZGRsZSIgbGluZUhlaWdodD0iMTI1JSIgYW5jaG9yPSJtaWRkbGUiIGZhbWlseT0i5b6u6L2v6ZuF6buRIiBzaXplPSIxM3B4IiB3ZWlnaHQ9IjQwMCIgZm9udC1zdHlsZT0iIiBvcGFjaXR5PSIxIiB5PSItMC42MjUiIHRyYW5zZm9ybT0icm90YXRlKDApIj48L3RleHQ+PC9nPjwvZz48L3N2Zz4=)
 
-  ```
-  @Entity  
-  public interface Book {  
-    
-      @ManyToOne  
-      @Nullable  
-      BookStore store();  
-    
-      ...  
+  ```@entity
+  public interface Book {
+
+      @ManyToOne
+      @Nullable
+      BookStore store();
+
+      ...
   }
-  ```
+
+```
 
   关联注解具备`mappedBy`的属性（这里的`BookStore.books`），叫做镜像属性。
-* 镜像属性是可选的，因此，双向关联不是必须的。
-* 和`JPA/Hibernate`不同，Jimmer中的一对多关联只能作为多对一关联的镜像。即，一对多关联一定意味着双向关联。
+- 镜像属性是可选的，因此，双向关联不是必须的。
+- 和`JPA/Hibernate`不同，Jimmer中的一对多关联只能作为多对一关联的镜像。即，一对多关联一定意味着双向关联。
 
 ## 多对多关联`Book.authors`[​](#多对多关联bookauthors "多对多关联bookauthors的直接链接")
 
 修改`Book.java`/`Book.kt`，添加一个关联属性`authors`
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Book.java
 
-```
-package com.example.model;  
-  
-...省略导入语句...  
-  
-@Entity  
-public interface Book {  
-  
-    ...省略其他属性...  
-  
-    @ManyToMany  
-    @JoinTable(  
-        name = "BOOK_AUTHOR_MAPPING",  
-        joinColumnName = "BOOK_ID",  
-        inverseJoinColumnName = "AUTHOR_ID"  
-    )  
-    List<Author> authors();  
+```package com.example.model;
+...省略导入语句...
+
+@Entity
+public interface Book {
+
+    ...省略其他属性...
+
+    @ManyToMany
+    @JoinTable(
+        name = "BOOK_AUTHOR_MAPPING",
+        joinColumnName = "BOOK_ID",
+        inverseJoinColumnName = "AUTHOR_ID"
+    )
+    List<Author> authors();
 }
+
 ```
 
 Book.kt
 
-```
-package com.example.model  
-  
-...省略导入语句...  
-  
-@Entity  
-interface Book {  
-  
-    ...省略其他属性...  
-  
-    @ManyToMany  
-    @JoinTable(  
-        name = "BOOK_AUTHOR_MAPPING",  
-        joinColumnName = "BOOK_ID",  
-        inverseJoinColumnName = "AUTHOR_ID"  
-    )  
-    val authors: List<Author>  
+```package com.example.model
+...省略导入语句...
+
+@Entity
+interface Book {
+
+    ...省略其他属性...
+
+    @ManyToMany
+    @JoinTable(
+        name = "BOOK_AUTHOR_MAPPING",
+        joinColumnName = "BOOK_ID",
+        inverseJoinColumnName = "AUTHOR_ID"
+    )
+    val authors: List<Author>
 }
+
 ```
 
-* `@org.babyfish.jimmer.sql.ManyToMany`声明对多对多关联。
-* 多对多关联分为两种，主动端和镜像端，这里的`@ManyToMany`是主动端。镜像端在后文介绍。
-* 对于主动端的多对多关联，可以使用`@org.babyfish.jimmer.sql.JoinTable`设置中间表
+- `@org.babyfish.jimmer.sql.ManyToMany`声明对多对多关联。
+- 多对多关联分为两种，主动端和镜像端，这里的`@ManyToMany`是主动端。镜像端在后文介绍。
+- 对于主动端的多对多关联，可以使用`@org.babyfish.jimmer.sql.JoinTable`设置中间表
 
-  + name: 中间表的表名
+  - name: 中间表的表名
 
     如果不指定，默认为：`{当前实体短名驼峰转下划线}_{目标实体短名驼峰转下划线}_MAPPING`
-  + joinColumnName: 中间表引用当前实体类型（这里是`Book`）的外键
+  - joinColumnName: 中间表引用当前实体类型（这里是`Book`）的外键
 
     如果不指定，默认为：`{当前实体短名驼峰转下划线}_ID`
-  + inverseJoinColumnName: 中间表引用目标实体类型（这里是`Author`）的外键
+  - inverseJoinColumnName: 中间表引用目标实体类型（这里是`Author`）的外键
 
     如果不指定，默认为：`{目标实体短名驼峰转下划线}_ID`
 
@@ -511,72 +498,70 @@ interface Book {
 
 修改`Author.java`/`Author.kt`，添加一个关联属性`books`
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Author.java
 
-```
-package com.example.model;  
-  
-...省略导入语句...  
-  
-@Entity  
-public interface Author {  
-  
-    ...省略其他属性...  
-  
-    @ManyToMany(mappedBy = "authors")  
-    List<Book> books();  
+```package com.example.model;
+...省略导入语句...
+
+@Entity
+public interface Author {
+
+    ...省略其他属性...
+
+    @ManyToMany(mappedBy = "authors")
+    List<Book> books();
 }
+
 ```
 
 Author.kt
 
-```
-package com.example.model  
-  
-...省略导入语句...  
-  
-@Entity  
-interface Author {  
-  
-    ...省略其他属性...  
-  
-    @ManyToMany(mappedBy = "authors")  
-    val books: List<Book>  
+```package com.example.model
+...省略导入语句...
+
+@Entity
+interface Author {
+
+    ...省略其他属性...
+
+    @ManyToMany(mappedBy = "authors")
+    val books: List<Book>
 }
+
 ```
 
 这里，`@org.babyfish.jimmer.sql.ManyToMany`注解的`mappedBy`被设置了，这表示是一个镜像端的多对多映射。
 
 `@ManyToMany(mappedBy = "authors")`，指当前属性`Author.books`是`Book.authors`的镜像。
 
-```
-@Entity  
-public interface Author {  
-  
-    @ManyToMany(  
-        mappedBy = "authors"  
-    )  
-    List<Book> books();  
-  
-    ...  
+```@entity
+public interface Author {
+
+    @ManyToMany(
+        mappedBy = "authors"
+    )
+    List<Book> books();
+
+    ...
 }
+
 ```
 
 ![mirror](data:image/svg+xml;base64,PHN2ZyBpZD0iU3ZnanNTdmcxMDAxIiB3aWR0aD0iMTI5LjUiIGhlaWdodD0iMjM5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnN2Z2pzPSJodHRwOi8vc3ZnanMuY29tL3N2Z2pzIj48ZGVmcyBpZD0iU3ZnanNEZWZzMTAwMiI+PC9kZWZzPjxnIGlkPSJTdmdqc0cxMDA4Ij48cGF0aCBpZD0iU3ZnanNQYXRoMTAwOSIgZD0iTTY1IDI1TDY1IDExOS41TDY1IDExOS41TDY1IDIxNCIgc3Ryb2tlPSIjMzIzMjMyIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiPjwvcGF0aD48L2c+PGcgaWQ9IlN2Z2pzRzEwMTAiIHRyYW5zZm9ybT0ibWF0cml4KDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywxLC0xLDYuMTIzMjMzOTk1NzM2NzY2ZS0xNywxMDUsMjcpIj48cGF0aCBpZD0iU3ZnanNQYXRoMTAxMSIgZD0iTSAwIDBMIDE4NCAwTCAxNzQgMjBMIDEwIDIwTCAwIDBaIiBzdHJva2U9InJnYmEoMzMsNDEsNDgsMSkiIHN0cm9rZS13aWR0aD0iMiIgZmlsbC1vcGFjaXR5PSIxIiBmaWxsPSIjZmZmZmZmIj48L3BhdGg+PGcgaWQ9IlN2Z2pzRzEwMTIiPjx0ZXh0IGlkPSJTdmdqc1RleHQxMDEzIiBmb250LWZhbWlseT0i5b6u6L2v6ZuF6buRIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzcHgiIHdpZHRoPSIxNDhweCIgZmlsbD0iIzMyMzIzMiIgZm9udC13ZWlnaHQ9IjQwMCIgYWxpZ249Im1pZGRsZSIgbGluZUhlaWdodD0iMTI1JSIgYW5jaG9yPSJtaWRkbGUiIGZhbWlseT0i5b6u6L2v6ZuF6buRIiBzaXplPSIxM3B4IiB3ZWlnaHQ9IjQwMCIgZm9udC1zdHlsZT0iIiBvcGFjaXR5PSIxIiB5PSItMC42MjUiIHRyYW5zZm9ybT0icm90YXRlKDApIj48L3RleHQ+PC9nPjwvZz48ZyBpZD0iU3ZnanNHMTAxNCIgdHJhbnNmb3JtPSJtYXRyaXgoLTEuODM2OTcwMTk4NzIxMDI5N2UtMTYsLTEsMSwtMS44MzY5NzAxOTg3MjEwMjk3ZS0xNiwyNS41MDAwMDAwMDAwMDAwMTgsMjEzLjUpIj48cGF0aCBpZD0iU3ZnanNQYXRoMTAxNSIgZD0iTSAwIDBMIDE4NyAwTCAxNzcgMjBMIDEwIDIwTCAwIDBaIiBzdHJva2U9InJnYmEoMzMsNDEsNDgsMSkiIHN0cm9rZS13aWR0aD0iMiIgZmlsbC1vcGFjaXR5PSIxIiBmaWxsPSIjZmZmZmZmIj48L3BhdGg+PGcgaWQ9IlN2Z2pzRzEwMTYiPjx0ZXh0IGlkPSJTdmdqc1RleHQxMDE3IiBmb250LWZhbWlseT0i5b6u6L2v6ZuF6buRIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzcHgiIHdpZHRoPSIxNTBweCIgZmlsbD0iIzMyMzIzMiIgZm9udC13ZWlnaHQ9IjQwMCIgYWxpZ249Im1pZGRsZSIgbGluZUhlaWdodD0iMTI1JSIgYW5jaG9yPSJtaWRkbGUiIGZhbWlseT0i5b6u6L2v6ZuF6buRIiBzaXplPSIxM3B4IiB3ZWlnaHQ9IjQwMCIgZm9udC1zdHlsZT0iIiBvcGFjaXR5PSIxIiB5PSItMC42MjUiIHRyYW5zZm9ybT0icm90YXRlKDApIj48L3RleHQ+PC9nPjwvZz48L3N2Zz4=)
 
-```
-@Entity  
-public interface Book {  
-  
-    @ManyToMany  
-    @JoinTable(...略...)  
-    List<Author> authors();  
-  
-    ...  
+```@entity
+public interface Book {
+
+    @ManyToMany
+    @JoinTable(...略...)
+    List<Author> authors();
+
+    ...
 }
+
 ```
 
 镜像端的多对多关联是可选的，即，双向多对多关联是可选的。但是，一旦声明双向多对多关联，必须一端为主动端，一端是镜像端。
@@ -591,48 +576,46 @@ Jimmer没有这个问题，你可以随意决定，没有任何影响。
 
 现在，读者应该理解了关联属性。让我们快速完善TreeNode的定义：
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 TreeNode.java
 
-```
-package com.example.model;  
-  
-...省略导入语句...  
-  
-@Entity  
-public interface TreeNode {  
-  
-    ...省略其他属性...  
-  
-    @ManyToOne  
-    @Nullable  
-    TreeNode parent();  
-  
-    @OneToMany(mappedBy = "parent")  
-    List<TreeNode> childNodes();  
+```package com.example.model;
+...省略导入语句...
+
+@Entity
+public interface TreeNode {
+
+    ...省略其他属性...
+
+    @ManyToOne
+    @Nullable
+    TreeNode parent();
+
+    @OneToMany(mappedBy = "parent")
+    List<TreeNode> childNodes();
 }
+
 ```
 
 TreeNode.kt
 
-```
-package com.example.model  
-  
-...省略导入语句...  
-  
-@Entity  
-interface TreeNode {  
-  
-    ...省略其他属性...  
-  
-    @ManyToOne  
-    val parent: TreeNode?  
-  
-    @OneToMany(mappedBy = "parent")  
-    val childNodes: List<TreeNode>  
+```package com.example.model
+...省略导入语句...
+
+@Entity
+interface TreeNode {
+
+    ...省略其他属性...
+
+    @ManyToOne
+    val parent: TreeNode?
+
+    @OneToMany(mappedBy = "parent")
+    val childNodes: List<TreeNode>
 }
+
 ```
 
 ## 为什么实体是interface[​](#为什么实体是interface "为什么实体是interface的直接链接")
@@ -643,18 +626,18 @@ interface TreeNode {
 
    Jimmer实体并非简单的Java Bean，而是动态对象。
 
-   * 某个属性未被设置和某个属性被设置为null，是完全不同的。
-   * 直接访问某个不存在的属性，异常。
-   * 使用Jackson序列化动态对象，不会异常，而是自动忽略未设置属性。
+   - 某个属性未被设置和某个属性被设置为null，是完全不同的。
+   - 直接访问某个不存在的属性，异常。
+   - 使用Jackson序列化动态对象，不会异常，而是自动忽略未设置属性。
 
    完整的动态性论述，请参见[动态性](/zh/docs/object/dynamic)
 
-   * 动态性的好处
+   - 动态性的好处
 
-     + 轻松表达任意复杂的数据结构。任何一个实体对象，都有无限的表达力，可能是一个残缺的对象，也可能是一个完整的对象  ，还可能是一个复杂树的聚合根。
-     + 既然可以轻松表达任意复杂的数据结构，那么，ORM就可以以整个数据结构为基本操作单位，而非以单个实体对象为操作单位，对整个数据结构实现一句话查询、一句话保存。
-     + 对于查询业务而言，描述任意复杂的数据结构可以直接作为HTTP服务的返回，无需为实现每一种特定形状的返回数据结构不厌其烦地定义DTO类型并逐一映射。
-   * Jimmer和动态语言方案的对比
+     - 轻松表达任意复杂的数据结构。任何一个实体对象，都有无限的表达力，可能是一个残缺的对象，也可能是一个完整的对象  ，还可能是一个复杂树的聚合根。
+     - 既然可以轻松表达任意复杂的数据结构，那么，ORM就可以以整个数据结构为基本操作单位，而非以单个实体对象为操作单位，对整个数据结构实现一句话查询、一句话保存。
+     - 对于查询业务而言，描述任意复杂的数据结构可以直接作为HTTP服务的返回，无需为实现每一种特定形状的返回数据结构不厌其烦地定义DTO类型并逐一映射。
+   - Jimmer和动态语言方案的对比
 
      如上所述，Jimmer利用实体对象的动态性，提供静态语言ORM难以想象的灵活性。
 

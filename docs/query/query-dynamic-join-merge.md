@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/query/dynamic-join/merge
 
-* [查询篇](/zh/docs/query/)
-* [动态JOIN](/zh/docs/query/dynamic-join/)
-* 合并冲突连接
+- [查询篇](/zh/docs/query/)
+- [动态JOIN](/zh/docs/query/dynamic-join/)
+- 合并冲突连接
 
 本页总览
 
@@ -20,110 +20,112 @@
 
 这个问题有两种解决方啊，本文演示第一种解决办法
 
-* 解决场景1的问题
+- 解决场景1的问题
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
-  ```
-  List<Book> findBooks(  
-          @Nullable String name,  
-          @Nullable String storeName,  
-          @Nullable String storeWebsite  
-  ) {  
-      BookTable table = Tables.BOOK_TABLE;  
-    
-      return sqlClient  
-          .createQuery(table)  
-          .whereIf(  
-              name != null,  
-              () -> book.name().like(name)  
-          )  
-          .whereIf(  
-              storeName != null,  
-              () -> table  
-                  .store() ❶  
-                  .name()  
-                  .like(storeName)  
-          )  
-          .whereIf(  
-              storeWebsite != null,  
-              () -> table  
-                  .store() ❷  
-                  .website()  
-                  .like(storeWebsite)  
-          )  
-          .select(book)  
-          .execute();  
+  ```list<book> findbooks(
+          @Nullable String name,
+          @Nullable String storeName,
+          @Nullable String storeWebsite
+  ) {
+      BookTable table = Tables.BOOK_TABLE;
+
+      return sqlClient
+          .createQuery(table)
+          .whereIf(
+              name != null,
+              () -> book.name().like(name)
+          )
+          .whereIf(
+              storeName != null,
+              () -> table
+                  .store() ❶
+                  .name()
+                  .like(storeName)
+          )
+          .whereIf(
+              storeWebsite != null,
+              () -> table
+                  .store() ❷
+                  .website()
+                  .like(storeWebsite)
+          )
+          .select(book)
+          .execute();
   }
-  ```
 
-  ```
-  fun findBooks(  
-      name: String? = null,  
-      storeName: String? = null,  
-      storeWebsite: String? = null  
-  ): List<Book> =  
-      sqlClient  
-          .createQuery(Book::class) {  
-              name?.let {  
-                  where(table.name like it)  
-              }  
-              storeName?.let {  
-                  where(  
-                      table  
-                          .store ❶  
-                          .name like it  
-                  )  
-              }  
-              storeWebsite?.let {  
-                  where(  
-                      table  
-                          .store ❷  
-                          .website like it  
-                  )  
-              }  
-              select(table)  
-          }  
+```
+
+  ```fun findbooks(
+      name: String? = null,
+      storeName: String? = null,
+      storeWebsite: String? = null
+  ): List<Book> =
+      sqlClient
+          .createQuery(Book::class) {
+              name?.let {
+                  where(table.name like it)
+              }
+              storeName?.let {
+                  where(
+                      table
+                          .store ❶
+                          .name like it
+                  )
+              }
+              storeWebsite?.let {
+                  where(
+                      table
+                          .store ❷
+                          .website like it
+                  )
+              }
+              select(table)
+          }
           .execute()
-  ```
+
+```
 
   这是一个典型的动态查询，三个查询参数都允许为null。
 
-  + 指定`name`，但`storeName`和`storeWebsite`仍然为null。
+  - 指定`name`，但`storeName`和`storeWebsite`仍然为null。
 
     这时，❶和❷两处的代码都不会执行，最终生成的SQL不会包含任何join。
 
-    ```
-    select   
-        tb_1_.ID,   
-        tb_1_.NAME,   
-        tb_1_.EDITION,   
-        tb_1_.PRICE,   
-        tb_1_.STORE_ID   
-    from BOOK as tb_1_   
+    ```select
+        tb_1_.ID,
+        tb_1_.NAME,
+        tb_1_.EDITION,
+        tb_1_.PRICE,
+        tb_1_.STORE_ID
+    from BOOK as tb_1_
         where tb_1_.NAME = ?
-    ```
-  + 指定`name`和`storeName`, 但`storeWebsite`仍然为null。
+
+```
+
+  - 指定`name`和`storeName`, 但`storeWebsite`仍然为null。
 
     这时，❶处的连接生效但❷处的代码不会被执行，最终生成的SQL如下。
 
-    ```
-    select   
-        tb_1_.ID,   
-        tb_1_.NAME,   
-        tb_1_.EDITION,   
-        tb_1_.PRICE,   
-        tb_1_.STORE_ID   
-    from BOOK as tb_1_   
-    inner join BOOK_STORE as tb_2_   
-        on tb_1_.STORE_ID = tb_2_.ID  
-    where   
-        tb_1_.NAME = ?   
-    and   
+    ```select
+        tb_1_.ID,
+        tb_1_.NAME,
+        tb_1_.EDITION,
+        tb_1_.PRICE,
+        tb_1_.STORE_ID
+    from BOOK as tb_1_
+    inner join BOOK_STORE as tb_2_
+        on tb_1_.STORE_ID = tb_2_.ID
+    where
+        tb_1_.NAME = ?
+    and
         tb_2_.NAME = ?
-    ```
-  + 指定所有参数，`name`, `storeName`和`storeWebsite`都非null。
+
+```
+
+  - 指定所有参数，`name`, `storeName`和`storeWebsite`都非null。
 
     这时，❶、❷两处的连接都生效，这种情况叫连接冲突。
 
@@ -133,167 +135,176 @@
 
     因此，在最终生成的SQL，不会导致重复的join操作。
 
-    ```
-    select   
-        tb_1_.ID,   
-        tb_1_.NAME,   
-        tb_1_.EDITION,   
-        tb_1_.PRICE,   
-        tb_1_.STORE_ID   
-    from BOOK as tb_1_   
-        inner join BOOK_STORE as tb_2_ on   
-            tb_1_.STORE_ID = tb_2_.ID   
-    where   
-        tb_1_.NAME = ?   
-    and   
-        tb_2_.NAME = ?   
-    and   
+    ```select
+        tb_1_.ID,
+        tb_1_.NAME,
+        tb_1_.EDITION,
+        tb_1_.PRICE,
+        tb_1_.STORE_ID
+    from BOOK as tb_1_
+        inner join BOOK_STORE as tb_2_ on
+            tb_1_.STORE_ID = tb_2_.ID
+    where
+        tb_1_.NAME = ?
+    and
+        tb_2_.NAME = ?
+    and
         tb_2_.WEBSITE = ?
-    ```
-* 解决场景2的问题
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  List<Long> findDistinctIds(  
-      @Nullable Long aId,  
-      @Nullable Long bId,  
-      @Nullable Long cId,  
-      @Nullable Long dId,  
-      @Nullable Long eId  
-  ) {  
-      ATable table = Tables.A_TABLE;  
-    
-      return sqlClient  
-          .createQuery(table)  
-          .whereIf(  
-              aId != null,  
-              () -> table.id().like(aId)  
-          )  
-          .whereIf(  
-              bId != null,  
-              () -> table.asTableEx().bs().id().like(bId)  
-          )  
-          .whereIf(  
-              cId != null,  
-              () -> table.asTableEx().bs().cs().id().like(cId)  
-          )  
-          .whereIf(  
-              dId != null,  
-              () -> table.asTableEx().bs().cs().ds().id().like(dId)  
-          )  
-          .whereIf(  
-              eId != null,  
-              () -> table.asTableEx().bs().cs().ds().es().id().like(eId)  
-          )  
-          .select(book.id())  
-          .distinct()  
-          .execute();  
+- 解决场景2的问题
+
+  - Java
+  - Kotlin
+
+  ```list<long> finddistinctids(
+      @Nullable Long aId,
+      @Nullable Long bId,
+      @Nullable Long cId,
+      @Nullable Long dId,
+      @Nullable Long eId
+  ) {
+      ATable table = Tables.A_TABLE;
+
+      return sqlClient
+          .createQuery(table)
+          .whereIf(
+              aId != null,
+              () -> table.id().like(aId)
+          )
+          .whereIf(
+              bId != null,
+              () -> table.asTableEx().bs().id().like(bId)
+          )
+          .whereIf(
+              cId != null,
+              () -> table.asTableEx().bs().cs().id().like(cId)
+          )
+          .whereIf(
+              dId != null,
+              () -> table.asTableEx().bs().cs().ds().id().like(dId)
+          )
+          .whereIf(
+              eId != null,
+              () -> table.asTableEx().bs().cs().ds().es().id().like(eId)
+          )
+          .select(book.id())
+          .distinct()
+          .execute();
   }
-  ```
 
-  ```
-  fun findDistinctIds(  
-      aId: Long? = null,  
-      bId: Long? = null,  
-      cId: Long? = null,  
-      dId: Long? = null,  
-      eId: Long? = null  
-  ): List<Long> =  
-      sqlClient  
-          .createQuery(A::class) {  
-              aId?.let {  
-                  where(table.id eq it)  
-              }  
-              bId?.let {  
-                  where(table.asTableEx().bs.id eq it)  
-              }  
-              cId?.let {  
-                  where(table.asTableEx().bs.cs.id eq it)  
-              }  
-              dId?.let {  
-                  where(table.asTableEx().bs.cs.ds.id eq it)  
-              }  
-              eId?.let {  
-                  where(table.asTableEx().bs.cs.ds.es.id eq it)  
-              }  
-              select(table.id)  
-          }  
-          .distinct()  
+```
+
+  ```fun finddistinctids(
+      aId: Long? = null,
+      bId: Long? = null,
+      cId: Long? = null,
+      dId: Long? = null,
+      eId: Long? = null
+  ): List<Long> =
+      sqlClient
+          .createQuery(A::class) {
+              aId?.let {
+                  where(table.id eq it)
+              }
+              bId?.let {
+                  where(table.asTableEx().bs.id eq it)
+              }
+              cId?.let {
+                  where(table.asTableEx().bs.cs.id eq it)
+              }
+              dId?.let {
+                  where(table.asTableEx().bs.cs.ds.id eq it)
+              }
+              eId?.let {
+                  where(table.asTableEx().bs.cs.ds.es.id eq it)
+              }
+              select(table.id)
+          }
+          .distinct()
           .execute()
-  ```
+
+```
 
   信息
 
-  + 有了前面的基础，这里不再需要罗列不同的参数组合下会生成和何种SQL。明白无论如何最终SQL都不会包含重复的连接操作即可。
-  + 这里的`asTableEx`是后续文档[分页安全性](/zh/docs/query/dynamic-join/table-ex)要介绍的概念。这里，请读者先忽略它。
+  - 有了前面的基础，这里不再需要罗列不同的参数组合下会生成和何种SQL。明白无论如何最终SQL都不会包含重复的连接操作即可。
+  - 这里的`asTableEx`是后续文档[分页安全性](/zh/docs/query/dynamic-join/table-ex)要介绍的概念。这里，请读者先忽略它。
 
 ## 合并规则[​](#合并规则 "合并规则的直接链接")
 
 假设有三个表连接路径，分别是
 
-* a -> b -> c -> d -> e -> f -> g
-* a -> b -> c -> h -> i -> j
-* a -> x -> y -> z -> a-> b -> c -> d
+- a -> b -> c -> d -> e -> f -> g
+- a -> b -> c -> h -> i -> j
+- a -> x -> y -> z -> a-> b -> c -> d
 
 为了消除冲突，Jimmer会先把这些路径中的节点合并成一棵树
 
-```
--+-a  
- |  
- +----+-b  
- |    |  
- |    \----+-c   
- |         |  
- |         +----+-d  
- |         |    |  
- |         |    \----+-e  
- |         |         |  
- |         |         \----+-f  
- |         |              |  
- |         |              \------g  
- |         |  
- |         \----+-h  
- |              |  
- |              \----+-i  
- |                   |  
- |                   \------j  
- |  
- \----+-x  
-      |  
-      \----+-y  
-           |  
-           \----+-z  
-                |  
-                \----+-a  
-                     |  
-                     \----+-b  
-                          |  
-                          \----+-c  
-                               |  
+```-+-a
+|  |
+||
+ - ----+-b
+|          |          |
+|----------|----------|
+| \----+-c |          |
+|          |          |
+| +----+-d |          |
+|          |          |
+|          | \----+-e |
+|          |          |
+|          | \----+-f |
+|          |          |
+|          | \------g |
+|          |          |
+| \----+-h |          |
+|          |          |
+| \----+-i |          |
+|          |          |
+| \------j |          |
+|          |          |
+ \----+-x
+|  |
+||
+      \----+-y
+|  |
+||
+           \----+-z
+|  |
+||
+                \----+-a
+|  |
+||
+                     \----+-b
+|  |
+||
+                          \----+-c
+|  |
+||
                                \------d
+
 ```
 
 然后根据这棵树来生成最终SQL中的join子句。
 
 另外一个需要说明的规则，就是连接方式。创建join对象的方法具备参数，以指定连接方式，比如，左连接：
 
-* Java
-* Kotlin
+- Java
+- Kotlin
+
+```book.store(jointype.left)
 
 ```
-book.store(JoinType.LEFT)
-```
 
-```
-book.`store?`
+```book.`store?`
+
 ```
 
 连接方式合并规则如下：
 
-* 如果发生冲突的join节点的连接方式全部一样，合并后连接方式不变。
-* 否则，合并后一定是内连接。
+- 如果发生冲突的join节点的连接方式全部一样，合并后连接方式不变。
+- 否则，合并后一定是内连接。
 
 [编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/query/dynamic-join/merge.mdx)
 

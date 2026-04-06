@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/database-validation
 
-* [配置篇](/zh/docs/configuration/)
-* 数据库验证
+- [配置篇](/zh/docs/configuration/)
+- 数据库验证
 
 本页总览
 
@@ -21,62 +21,63 @@
 
 信息
 
-**验证规则**
+- *验证规则**
 
-* 验证表名、列名、序列名是否和实体模型中的定义一致。
-* 验证列的nullity是否和实体模型中属性的定义一致。
+- 验证表名、列名、序列名是否和实体模型中的定义一致。
+- 验证列的nullity是否和实体模型中属性的定义一致。
 
   如果属性被`@OneToOne(inputNotNull = true)`或`@ManyToOne(inputNotNull = true)`修饰，则无视属性本身的nullity，认为数据中对应的外键不能为null。
-* 对于实体模型中各实体的id属性，验证数据库是否有存在完全匹配的的主键约束。
-* 对于实体模型中定义的真外键 *(参见[真假外键](/zh/docs/mapping/base/foreignkey))* 而言，验证数据库中是否存在完全匹配的的外键约束。
+- 对于实体模型中各实体的id属性，验证数据库是否有存在完全匹配的的主键约束。
+- 对于实体模型中定义的真外键 *(参见[真假外键](/zh/docs/mapping/base/foreignkey))* 而言，验证数据库中是否存在完全匹配的的外键约束。
 
 ## 开启验证[​](#开启验证 "开启验证的直接链接")
 
 有两种方法开始验证
 
-* 使用Spring Boot Starter
+- 使用Spring Boot Starter
 
   修改`application.yml` *(或application.properties)*
 
-  ```
-  jimmer:  
+  ```jimmer:
     database-validation-mode: ERROR
-  ```
-* 使用底层API
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  JSqlClient sqlClient = JSqlClient  
-      .newBuilder()  
-      .setDatabaseValidationMode(  
-          DatabaseValidationMode.ERROR  
-      )  
-      ...省略其他配置...  
+- 使用底层API
+
+  - Java
+  - Kotlin
+
+  ```jsqlclient sqlclient = jsqlclient
+      .newBuilder()
+      .setDatabaseValidationMode(
+          DatabaseValidationMode.ERROR
+      )
+      ...省略其他配置...
       .build();
-  ```
 
-  ```
-  val sqlClient = newKSqlClient {  
-      setDatabaseValidationMode(  
-          DatabaseValidationMode.ERROR  
-      )  
-      ...省略其他配置...  
+```
+
+  ```val sqlclient = newksqlclient {
+      setDatabaseValidationMode(
+          DatabaseValidationMode.ERROR
+      )
+      ...省略其他配置...
   }
-  ```
+
+```
 
 `DatabaseValidationMode`是枚举类型，有三个取值:
 
-* `NONE`: 不验证数据库结构，这是默认行为。
-* `WARNING`: 验证数据库结构，如果数据库结构和实体模型定义不一致，不阻止程序运行，只是在日志中打印告警信息。
-* `ERROR`: 验证数据库结构，如果数据库结构和实体模型定义不一致，抛出异常，阻止程序运行。
+- `NONE`: 不验证数据库结构，这是默认行为。
+- `WARNING`: 验证数据库结构，如果数据库结构和实体模型定义不一致，不阻止程序运行，只是在日志中打印告警信息。
+- `ERROR`: 验证数据库结构，如果数据库结构和实体模型定义不一致，抛出异常，阻止程序运行。
 
 ## 解决表冲突[​](#解决表冲突 "解决表冲突的直接链接")
 
-* 实体类型必然对应于数据库的某张表，无论是由开发人员通过`@Table`显式配置表名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定。
-* 基于中间表的关联属性必然对应于数据库的某张表，无论是由开发人员通过`@JoinTable`显式配置表名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定。
-* 自动增长策略为`SEQUENCE`的ID必然对应于数据库的某个序列，无论是由开发人员通过`@GeneratedValue`显式配置序列名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定
+- 实体类型必然对应于数据库的某张表，无论是由开发人员通过`@Table`显式配置表名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定。
+- 基于中间表的关联属性必然对应于数据库的某张表，无论是由开发人员通过`@JoinTable`显式配置表名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定。
+- 自动增长策略为`SEQUENCE`的ID必然对应于数据库的某个序列，无论是由开发人员通过`@GeneratedValue`显式配置序列名还是由[命名策略](/zh/docs/mapping/base/naming-strategy)自动决定
 
 程序启动时，Jimmer需要查询数据库以验证这些表或序列是否存在。以及，如果存在，其内部结构是否正确 *(针对表)*。
 
@@ -87,94 +88,95 @@
 
 要解决此问题，以下两种方法可供选择：
 
-* 明确指定严格的表名或序列名，例如：
+- 明确指定严格的表名或序列名，例如：
 
-  + 将`@Table(name = "BOOK")`修改为`@Table(name = "db1.BOOK")`。
-  + 将`@JoinTable(name = "BOOK_AUTHOR_MAPPING")`修改为`@JoinTable(name = "db1.BOOK_AUTHOR_MAPPING")`。
-  + 将`@GeneratedValue(sequenceName = "BOOK_ID_SEQ")`修改为`@GeneratedValue(sequenceName = "db1.BOOK_ID_SEQ")`。
-* 明确指定被用于验证的子库名，这又可分为两种方法：
+  - 将`@Table(name = "BOOK")`修改为`@Table(name = "db1.BOOK")`。
+  - 将`@JoinTable(name = "BOOK_AUTHOR_MAPPING")`修改为`@JoinTable(name = "db1.BOOK_AUTHOR_MAPPING")`。
+  - 将`@GeneratedValue(sequenceName = "BOOK_ID_SEQ")`修改为`@GeneratedValue(sequenceName = "db1.BOOK_ID_SEQ")`。
+- 明确指定被用于验证的子库名，这又可分为两种方法：
 
   有两种方法开始验证
 
-  + 使用Spring Boot Starter
+  - 使用Spring Boot Starter
 
     修改`application.yml` *(或application.properties)*
 
-    ```
-    jimmer:  
-      database-validation:   
-        mode: ERROR  
+    ```jimmer:
+      database-validation:
+        mode: ERROR
         catalog: db1
-    ```
+
+```
 
     信息
 
     `jimmer.database-validation-mode`和`jimmer.database-validation.mode`等价
-  + 使用底层API
+  - 使用底层API
 
     - Java
     - Kotlin
 
-    ```
-    JSqlClient sqlClient = JSqlClient  
-        .newBuilder()  
-        .setDatabaseValidationMode(  
-            DatabaseValidationMode.ERROR  
-        )  
-        .setDatabaseValidationCatalog("db1")  
-        ...省略其他配置...  
+    ```jsqlclient sqlclient = jsqlclient
+        .newBuilder()
+        .setDatabaseValidationMode(
+            DatabaseValidationMode.ERROR
+        )
+        .setDatabaseValidationCatalog("db1")
+        ...省略其他配置...
         .build();
-    ```
 
-    ```
-    val sqlClient = newKSqlClient {  
-        setDatabaseValidationMode(  
-            DatabaseValidationMode.ERROR  
-        )  
-        setDatabaseValidationCatalog("db1")  
-        ...省略其他配置...  
+```
+
+    ```val sqlclient = newksqlclient {
+        setDatabaseValidationMode(
+            DatabaseValidationMode.ERROR
+        )
+        setDatabaseValidationCatalog("db1")
+        ...省略其他配置...
     }
-    ```
+
+```
 
 同理，也可以指定schema，例如
 
-* 直接配置：`@Table(name = "mydatabase.myschema.BOOK")`
-* SpringBoot的`application.yml`文件配置
+- 直接配置：`@Table(name = "mydatabase.myschema.BOOK")`
+- SpringBoot的`application.yml`文件配置
 
-  ```
-  jimmer:  
-        database-validation:   
-          mode: ERROR  
-          catalog: mydatabase  
+  ```jimmer:
+        database-validation:
+          mode: ERROR
+          catalog: mydatabase
           schema: myschema
-  ```
-* 底层API配置
 
-  + Java
-  + Kotlin
+```
 
-  ```
-  JSqlClient sqlClient = JSqlClient  
-      .newBuilder()  
-      .setDatabaseValidationMode(  
-          DatabaseValidationMode.ERROR  
-      )  
-      .setDatabaseValidationCatalog("mydatabase")  
-      setDatabaseValidationSchema("myschema")  
-      ...省略其他配置...  
+- 底层API配置
+
+  - Java
+  - Kotlin
+
+  ```jsqlclient sqlclient = jsqlclient
+      .newBuilder()
+      .setDatabaseValidationMode(
+          DatabaseValidationMode.ERROR
+      )
+      .setDatabaseValidationCatalog("mydatabase")
+      setDatabaseValidationSchema("myschema")
+      ...省略其他配置...
       .build();
-  ```
 
-  ```
-  val sqlClient = newKSqlClient {  
-      setDatabaseValidationMode(  
-          DatabaseValidationMode.ERROR  
-      )  
-      setDatabaseValidationCatalog("mydatabase")  
-      setDatabaseValidationSchema("myschema")  
-      ...省略其他配置...  
+```
+
+  ```val sqlclient = newksqlclient {
+      setDatabaseValidationMode(
+          DatabaseValidationMode.ERROR
+      )
+      setDatabaseValidationCatalog("mydatabase")
+      setDatabaseValidationSchema("myschema")
+      ...省略其他配置...
   }
-  ```
+
+```
 
 ## 暂时忽略局部验证[​](#暂时忽略局部验证 "暂时忽略局部验证的直接链接")
 
@@ -182,8 +184,8 @@
 
 对此，Jimmer提供注解`@org.babyfish.jimmer.sql.DatabaseValidationIgnore`，该注解有以下两种用法：
 
-* 修饰实体接口，表示整个实体不用验证。
-* 修饰实体属性，表示特定属性不用验证。
+- 修饰实体接口，表示整个实体不用验证。
+- 修饰实体属性，表示特定属性不用验证。
 
 [编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/configuration/database-validation.mdx)
 

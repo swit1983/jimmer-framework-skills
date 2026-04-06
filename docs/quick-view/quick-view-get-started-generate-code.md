@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/get-started/generate-code
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* [快速上手](/zh/docs/quick-view/get-started/)
-* 生成代码
+- [快速预览 ★](/zh/docs/quick-view/)
+- [快速上手](/zh/docs/quick-view/get-started/)
+- 生成代码
 
 本页总览
 
@@ -16,123 +16,122 @@
 
 因此，编译时需要根据用户编写的实体类型，生成一些代码。
 
-* Java用户使用Annotation Processor
-* Kotlin用户使用KSP
+- Java用户使用Annotation Processor
+- Kotlin用户使用KSP
 
 你既可以使用Jimmer标准的构建方式，也可以采用社区提供的插件
 
-* 用法一：使用Jimmer标准的构建方式
+- 用法一：使用Jimmer标准的构建方式
 
-  + Java(Maven)
-  + Java(Gradle)
-  + Kotlin(Gradle.kts)
+  - Java(Maven)
+  - Java(Gradle)
+  - Kotlin(Gradle.kts)
 
   pom.xml
 
-  ```
-  ...省略其他代码...  
-    
-  <build>  
-      <plugins>  
-          <plugin>  
-              <groupId>org.apache.maven.plugins</groupId>  
-              <artifactId>maven-compiler-plugin</artifactId>  
-              <version>3.10.1</version>  
-              <configuration>  
-                  <annotationProcessorPaths>  
-                      <path>  
-                          <groupId>org.babyfish.jimmer</groupId>  
-                          <artifactId>jimmer-apt</artifactId>  
-                          <version>${jimmer.version}</version>  
-                      </path>  
-                  </annotationProcessorPaths>  
-              </configuration>  
-          </plugin>  
-      </plugins>  
-  </build>  
-    
+  ```...省略其他代码...
+  <build>
+      <plugins>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-compiler-plugin</artifactId>
+              <version>3.10.1</version>
+              <configuration>
+                  <annotationProcessorPaths>
+                      <path>
+                          <groupId>org.babyfish.jimmer</groupId>
+                          <artifactId>jimmer-apt</artifactId>
+                          <version>${jimmer.version}</version>
+                      </path>
+                  </annotationProcessorPaths>
+              </configuration>
+          </plugin>
+      </plugins>
+  </build>
+
   ...省略其他代码...
-  ```
+
+```
 
   build.gradle
 
-  ```
-  dependencies {  
-        
-      ...省略其他依赖...  
-    
-      annotationProcessor "org.babyfish.jimmer:jimmer-apt:${jimmerVersion}"  
+  ```dependencies {
+      ...省略其他依赖...
+
+      annotationProcessor "org.babyfish.jimmer:jimmer-apt:${jimmerVersion}"
   }
-  ```
+
+```
 
   build.gradle.kts
 
-  ```
-  plugins {  
-      // 添加ksp插件  
-      id("com.google.devtools.ksp") version "1.7.10-1.0.6"  
-    
-      ...省略其他插件...  
-  }  
-  dependencies {  
-        
-      // 应用jimmer的ksp代码生成器  
-      ksp("org.babyfish.jimmer:jimmer-ksp:${jimmerVersion}")  
-    
-      ...省略其他依赖...  
-  }  
-    
-  // 将生成的代码添加到编译路径中。  
-  // 没有这个配置，gradle命令仍然可以正常执行，  
-  // 但是, Intellij无法找到生成的源码。  
-  kotlin {  
-      sourceSets.main {  
-          kotlin.srcDir("build/generated/ksp/main/kotlin")  
-      }  
+  ```plugins {
+      // 添加ksp插件
+      id("com.google.devtools.ksp") version "1.7.10-1.0.6"
+
+      ...省略其他插件...
   }
-  ```
-* 用法二：使用社区提供的出插件
+  dependencies {
+
+      // 应用jimmer的ksp代码生成器
+      ksp("org.babyfish.jimmer:jimmer-ksp:${jimmerVersion}")
+
+      ...省略其他依赖...
+  }
+
+  // 将生成的代码添加到编译路径中。
+  // 没有这个配置，gradle命令仍然可以正常执行，
+  // 但是, Intellij无法找到生成的源码。
+  kotlin {
+      sourceSets.main {
+          kotlin.srcDir("build/generated/ksp/main/kotlin")
+      }
+  }
+
+```
+
+- 用法二：使用社区提供的出插件
 
   <https://github.com/ArgonarioD/gradle-plugin-jimmer>
 
-  + Java(Gradle插件)
-  + Kotlin(插件)
+  - Java(Gradle插件)
+  - Kotlin(插件)
 
   build.gradle
 
-  ```
-  plugins {  
-      // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本  
-      // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号  
-      id "tech.argonariod.gradle-plugin-jimmer" version "latest.release"  
-    
-      ... 省略其它插件 ...  
-  }  
-    
-  jimmer {  
-      // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式  
-      version = "${jimmerVersion}"  
+  ```plugins {
+      // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本
+      // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号
+      id "tech.argonariod.gradle-plugin-jimmer" version "latest.release"
+
+      ... 省略其它插件 ...
   }
-  ```
+
+  jimmer {
+      // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式
+      version = "${jimmerVersion}"
+  }
+
+```
 
   build.gradle.kts
 
-  ```
-  plugins {  
-      // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本  
-      id("tech.argonariod.gradle-plugin-jimmer") version "latest.release"  
-      // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号  
-      // 添加ksp插件  
-      id("com.google.devtools.ksp") version "1.7.10+"  
-    
-      ... 省略其它插件 ...  
-  }  
-    
-  jimmer {  
-      // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式  
-      version = "${jimmerVersion}"  
+  ```plugins {
+      // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本
+      id("tech.argonariod.gradle-plugin-jimmer") version "latest.release"
+      // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号
+      // 添加ksp插件
+      id("com.google.devtools.ksp") version "1.7.10+"
+
+      ... 省略其它插件 ...
   }
-  ```
+
+  jimmer {
+      // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式
+      version = "${jimmerVersion}"
+  }
+
+```
 
 备注
 
@@ -152,10 +151,10 @@
 
 Jimmer定义数据类型需要如下4个注解之一
 
-* org.babyfish.jimmer.Immutable
-* org.babyfish.jimmer.sql.Entity
-* org.babyfish.jimmer.sql.MappedSuperclass
-* org.babyfish.jimmer.sql.Embeddable
+- org.babyfish.jimmer.Immutable
+- org.babyfish.jimmer.sql.Entity
+- org.babyfish.jimmer.sql.MappedSuperclass
+- org.babyfish.jimmer.sql.Embeddable
 
 截止到目前为止，我们只介绍了`@Entity`，其他的东西会在其他后续文档中说明，这里先忽略。这四个注解中，第一个是ORM无关的，后面三个是ORM相关的。
 
@@ -163,101 +162,98 @@ Jimmer定义数据类型需要如下4个注解之一
 
 为解决这个问题，请如此配置依赖
 
-* Maven
-* Java(Gradle)
-* Kotlin(Gradle.kts)
-* Java(Gradle插件)
-* Kotlin(Gradle插件)
+- Maven
+- Java(Gradle)
+- Kotlin(Gradle.kts)
+- Java(Gradle插件)
+- Kotlin(Gradle插件)
 
 pom.xml
 
-```
-...省略其他代码...  
-  
-<dependencies>  
-    <dependency>  
-        <groupId>org.babyfish.jimmer</groupId>  
-        <!-- 用户编写的实体代码所需的依赖 -->  
-        <artifactId>jimmer-core</artifactId>  
-        <version>${jimmer.version}</version>  
-    </dependency>  
-    <dependency>  
-        <groupId>org.babyfish.jimmer</groupId>  
-        <!-- 生成的代码所需的依赖 -->  
-        <artifactId>jimmer-sql</artifactId>  
-        <version>${jimmer.version}</version>  
-        <!--其他项目必然导入包含此依赖-->  
-        <scope>provided</scope>  
-    </dependency>    
-  
-    ...省略其他依赖...  
-</dependencies>  
-  
+```...省略其他代码...
+<dependencies>
+    <dependency>
+        <groupId>org.babyfish.jimmer</groupId>
+        <!-- 用户编写的实体代码所需的依赖 -->
+        <artifactId>jimmer-core</artifactId>
+        <version>${jimmer.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.babyfish.jimmer</groupId>
+        <!-- 生成的代码所需的依赖 -->
+        <artifactId>jimmer-sql</artifactId>
+        <version>${jimmer.version}</version>
+        <!--其他项目必然导入包含此依赖-->
+        <scope>provided</scope>
+    </dependency>
+
+    ...省略其他依赖...
+</dependencies>
+
 ...省略其他代码...
+
 ```
 
 build.gradle
 
-```
-...省略其他代码...  
-  
-dependencies {  
-      
-    ...省略其他依赖...  
-  
-    // 用户编写的实体代码所需的依赖  
-    implementation "org.babyfish.jimmer:jimmer-core:${jimmerVersion}"  
-  
-    // 生成的代码所需的依赖，其他项目必然导入包含此依赖  
-    compileOnly "org.babyfish.jimmer:jimmer-sql:${jimmerVersion}"  
-}  
-  
+```...省略其他代码...
+dependencies {
+
+    ...省略其他依赖...
+
+    // 用户编写的实体代码所需的依赖
+    implementation "org.babyfish.jimmer:jimmer-core:${jimmerVersion}"
+
+    // 生成的代码所需的依赖，其他项目必然导入包含此依赖
+    compileOnly "org.babyfish.jimmer:jimmer-sql:${jimmerVersion}"
+}
+
 ...省略其他代码...
+
 ```
 
 build.gradle.kts
 
-```
-...省略其他代码...  
-  
-dependencies {  
-      
-    ...省略其他依赖...  
-  
-    // 用户编写的实体代码所需的依赖  
-    implementation("org.babyfish.jimmer:jimmer-core:${jimmerVersion}")  
-  
-    // 生成的代码所需的依赖，其他项目必然导入包含此依赖  
-    compileOnly("org.babyfish.jimmer:jimmer-sql:${jimmerVersion}")  
-}  
-  
+```...省略其他代码...
+dependencies {
+
+    ...省略其他依赖...
+
+    // 用户编写的实体代码所需的依赖
+    implementation("org.babyfish.jimmer:jimmer-core:${jimmerVersion}")
+
+    // 生成的代码所需的依赖，其他项目必然导入包含此依赖
+    compileOnly("org.babyfish.jimmer:jimmer-sql:${jimmerVersion}")
+}
+
 ...省略其他代码...
+
 ```
 
 build.gradle
 
-```
-jimmer {  
-    // 使 jimmer-sql 仅在生成和编译代码时被依赖  
-    ormCompileOnly = true  
-  
-    ...省略其它配置...  
-}  
-  
+```jimmer {
+    // 使 jimmer-sql 仅在生成和编译代码时被依赖
+    ormCompileOnly = true
+
+    ...省略其它配置...
+}
+
 ...省略其他代码...
+
 ```
 
 build.gradle.kts
 
-```
-jimmer {  
-    // 使 jimmer-sql-kotlin 仅在生成和编译代码时被依赖  
-    ormCompileOnly = true  
-  
-    ...省略其它配置...  
-}  
-  
+```jimmer {
+    // 使 jimmer-sql-kotlin 仅在生成和编译代码时被依赖
+    ormCompileOnly = true
+
+    ...省略其它配置...
+}
+
 ...省略其他代码...
+
 ```
 
 ## 确认代码生成成功[​](#确认代码生成成功 "确认代码生成成功的直接链接")
@@ -265,8 +261,9 @@ jimmer {
 如果代码生成成功，开发人员在编译输出目录中应该看到如下文件结构
 
 | Java用户应该看到的目录结构 | Kotlin用户应该看到的目录结构 |
-| --- | --- |
-|  |  |
+|-----------------|-------------------|
+| ---             | ---               |
+|                 |                   |
 
 备注
 
@@ -284,12 +281,13 @@ maven项目大同小异，顶级目录应该是target，而非build
 
 这些生成的代码大致功能如下
 
-| Java文件 | Kotlin文件 | 功能描述 |
-| --- | --- | --- |
-| XXXDraft.java | XXXDraft.kt | 不可变对象的可修改代理接口，对象的实现，创建和“修改”对象的方法 |
-| XXXProps.java | XXXProps.kt | 强类型SQL DSL |
-| XXXTable.java |
-| XXXTableEx.java |
+| Java文件          | Kotlin文件      | 功能描述                                               |
+|-----------------|---------------|----------------------------------------------------|
+| ---             | ---           | ---                                                |
+| XXXDraft.java   | XXXDraft.kt   | 不可变对象的可修改代理接口，对象的实现，创建和“修改”对象的方法                   |
+| XXXProps.java   | XXXProps.kt   | 强类型SQL DSL                                         |
+| XXXTable.java   |               |                                                    |
+| XXXTableEx.java |               |                                                    |
 | XXXFetcher.java | XXXFetcher.kt | 对象抓取器DSL。Jimmer支持一句话查询任意复杂的数据结构，对象抓取器用于定义该数据结构的形状。 |
 
 [编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/quick-view/get-started/generate-code.mdx)

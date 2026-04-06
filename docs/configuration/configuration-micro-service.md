@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/micro-service
 
-* [配置篇](/zh/docs/configuration/)
-* 微服务
+- [配置篇](/zh/docs/configuration/)
+- 微服务
 
 # 微服务
 

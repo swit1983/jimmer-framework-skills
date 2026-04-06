@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/mapping/base/more-type
 
-* [映射篇](/zh/docs/mapping/)
-* [基础映射](/zh/docs/mapping/base/)
-* 更多类型
+- [映射篇](/zh/docs/mapping/)
+- [基础映射](/zh/docs/mapping/base/)
+- 更多类型
 
 本页总览
 
@@ -12,9 +12,9 @@
 
 除了boolean，数字，字符串，UUID，日期，枚举外，标量属性还支持其他类型，包括
 
-* 数组类型
-* JSON类型
-* 自定义类型
+- 数组类型
+- JSON类型
+- 自定义类型
 
 信息
 
@@ -26,58 +26,58 @@
 
 要使用数组类型，需要底层数据库支持数组类型
 
-* Java
-* Kotlin
+- Java
+- Kotlin
+
+```@entity
+public interface Book {
+
+    @Id
+    long id();
+
+    String[] tags();
+}
 
 ```
-@Entity  
-public interface Book {  
-  
-    @Id  
-    long id();  
-  
-    String[] tags();  
-}
-```
 
-```
-@Entity  
-interface Book {  
-  
-    @Id  
-    val id: Long  
-  
-    val tags: Array<String>  
+```@entity
+interface Book {
+
+    @Id
+    val id: Long
+
+    val tags: Array<String>
 }
+
 ```
 
 对于Postgres而言，需要指定SQL中的数据元素类型，例如
 
-* Java
-* Kotlin
+- Java
+- Kotlin
+
+```@entity
+public interface Book {
+
+    @Id
+    long id();
+
+    @Column(sqlElementType = "text")
+    String[] tags();
+}
 
 ```
-@Entity  
-public interface Book {  
-  
-    @Id  
-    long id();  
-  
-    @Column(sqlElementType = "text")  
-    String[] tags();  
-}
-```
 
-```
-@Entity  
-interface Book {  
-  
-    @Id  
-    val id: Long  
-  
-    @Column(sqlElementType = "text")  
-    val tags: Array<String>  
+```@entity
+interface Book {
+
+    @Id
+    val id: Long
+
+    @Column(sqlElementType = "text")
+    val tags: Array<String>
 }
+
 ```
 
 ## JSON类型[​](#json类型 "JSON类型的直接链接")
@@ -88,37 +88,37 @@ interface Book {
 
 这里，以集合类型为例，展示其用法
 
-* Java
-* Kotlin
+- Java
+- Kotlin
+
+```@entity
+public interface Book {
+
+    @Id
+    long id();
+
+    @Serialized
+    Map<String, Map<String, List<Integer>> data();
+}
 
 ```
-@Entity  
-public interface Book {  
-  
-    @Id  
-    long id();  
-  
-    @Serialized  
-    Map<String, Map<String, List<Integer>> data();  
-}
-```
 
-```
-@Entity  
-interface Book {  
-  
-    @Id  
-    val id: Long  
-  
-    @Serialized  
-    val data: Map<String, Map<String, List<Integer>>  
+```@entity
+interface Book {
+
+    @Id
+    val id: Long
+
+    @Serialized
+    val data: Map<String, Map<String, List<Integer>>
 }
+
 ```
 
 那么JSON类型在SQL对应何种类型呢？
 
-* 如果数据库支持JSON或JSONB类型，就使用该类型
-* 否则，请使用字符串类型
+- 如果数据库支持JSON或JSONB类型，就使用该类型
+- 否则，请使用字符串类型
 
 对于Postgres而言，支持对JSON内部结构的操作，请详见[Postgres中的JSON操作](https://www.postgresql.org/docs/9.5/functions-json.html)。那么Jimmer应该如何实现这种操作呢？
 

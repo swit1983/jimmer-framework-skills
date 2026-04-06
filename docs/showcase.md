@@ -2,7 +2,7 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/showcase/
 
-* 案例展示 ★
+- 案例展示 ★
 
 # 案例展示 ★
 

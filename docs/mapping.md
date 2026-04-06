@@ -2,20 +2,20 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/mapping/
 
-* 映射篇
+- 映射篇
 
 # 映射篇
 
 在这个章节中，我们会介绍如何映射关系型数据库和实体模型。
 
-* 对于有ORM经验 *(尤其是JPA经验)* 的读者，可以快速阅读。
+- 对于有ORM经验 *(尤其是JPA经验)* 的读者，可以快速阅读。
 
   和JPA相比，区别很大的内容有：
 
-  + 基础映射：
+  - 基础映射：
 
     - [可空性](/zh/docs/mapping/base/nullity)
-  + 高级映射
+  - 高级映射
 
     - [视图属性](/zh/docs/mapping/advanced/view/)
     - [计算属性](/zh/docs/mapping/advanced/calculated/)
@@ -24,7 +24,7 @@
 
       Key对[保存指令](/zh/docs/mutation/save-command/)而言非常重要
     - [OnDissociate](/zh/docs/mapping/advanced/on-dissociate)
-* 对于没有ORM经验的读者，只能慢慢阅读。
+- 对于没有ORM经验的读者，只能慢慢阅读。
 
   这个过程是枯燥的，但这是任何ORM学习必经之路，ORM中无论多么强大和酷炫的功能，都必须以这些映射作为基础。
 

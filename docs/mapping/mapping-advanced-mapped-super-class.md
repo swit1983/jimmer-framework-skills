@@ -2,9 +2,9 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/mapping/advanced/mapped-super-class
 
-* [映射篇](/zh/docs/mapping/)
-* [进阶映射](/zh/docs/mapping/advanced/)
-* MappedSuperclass
+- [映射篇](/zh/docs/mapping/)
+- [进阶映射](/zh/docs/mapping/advanced/)
+- MappedSuperclass
 
 本页总览
 
@@ -18,119 +18,121 @@
 
 让我们来看一个例子，先定义超类型
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 BaseEntity.java
 
-```
-@MappedSuperclass  
-public interface BaseEntity {  
-  
-    LocalDateTime createdTime();  
-  
-    @ManyToOne  
-    User createdBy();  
-  
-    LocalDateTime modifiedTime();  
-  
-    @ManyToOne  
-    User modifiedBy();  
+```@mappedsuperclass
+public interface BaseEntity {
+
+    LocalDateTime createdTime();
+
+    @ManyToOne
+    User createdBy();
+
+    LocalDateTime modifiedTime();
+
+    @ManyToOne
+    User modifiedBy();
 }
+
 ```
 
 BaseEntity.kt
 
-```
-@MappedSuperclass  
-interface BaseEntity {  
-  
-    val createdTime: LocalDateTime  
-  
-    @ManyToOne  
-    val createdBy: User  
-  
-    val modifiedTime: LocalDateTime  
-  
-    @ManyToOne  
-    val modifiedBy: User  
+```@mappedsuperclass
+interface BaseEntity {
+
+    val createdTime: LocalDateTime
+
+    @ManyToOne
+    val createdBy: User
+
+    val modifiedTime: LocalDateTime
+
+    @ManyToOne
+    val modifiedBy: User
 }
+
 ```
 
 其他实体就可以继承它
 
-* `BookStore`
+- `BookStore`
 
-  + Java
-  + Kotlin
+  - Java
+  - Kotlin
 
   BookStore.java
 
-  ```
-  @Entity  
-  public interface BookStore extends BaseEntity {  
-    
-      ...省略其他代码...  
+  ```@entity
+  public interface BookStore extends BaseEntity {
+
+      ...省略其他代码...
   }
-  ```
+
+```
 
   BookStore.kt
 
-  ```
-  @Entity  
-  interface BookStore : BaseEntity {  
-    
-      ...省略其他代码...  
-  }
-  ```
-* `Book`
+  ```@entity
+  interface BookStore : BaseEntity {
 
-  + Java
-  + Kotlin
+      ...省略其他代码...
+  }
+
+```
+
+- `Book`
+
+  - Java
+  - Kotlin
 
   Book.java
 
-  ```
-  @Entity  
-  public interface Book extends BaseEntity {  
-    
-      ...省略其他代码...  
+  ```@entity
+  public interface Book extends BaseEntity {
+
+      ...省略其他代码...
   }
-  ```
+
+```
 
   Book.kt
 
-  ```
-  @Entity  
-  interface Book : BaseEntity {  
-    
-      ...省略其他代码...  
-  }
-  ```
-* `Author`
+  ```@entity
+  interface Book : BaseEntity {
 
-  + Java
-  + Kotlin
+      ...省略其他代码...
+  }
+
+```
+
+- `Author`
+
+  - Java
+  - Kotlin
 
   Author.java
 
-  ```
-  @Entity  
-  public interface Author extends BaseEntity {  
-    
-      ...省略其他代码...  
+  ```@entity
+  public interface Author extends BaseEntity {
+
+      ...省略其他代码...
   }
-  ```
+
+```
 
   Author.kt
 
-  ```
-  @Entity  
-  interface Author : BaseEntity {  
-    
-      ...省略其他代码...  
+  ```@entity
+  interface Author : BaseEntity {
+
+      ...省略其他代码...
   }
-  ```
+
+```
 
 ## 多继承[​](#多继承 "多继承的直接链接")
 
@@ -138,50 +140,50 @@ interface BaseEntity {
 
 添加一个新的抽象接口`TenantAware`，所有支持多租户的实体都继承它
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 TenantAware.java
 
-```
-@MappedSuperclass  
-public interface TenantAware {  
-  
-    String tenant();  
+```@mappedsuperclass
+public interface TenantAware {
+
+    String tenant();
 }
+
 ```
 
 TenantAware.kt
 
-```
-@MappedSuperclass  
-interface TenantAware {  
-  
-    val tenant: String  
+```@mappedsuperclass
+interface TenantAware {
+
+    val tenant: String
 }
+
 ```
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
 Book.java
 
-```
-@Entity  
-public interface Book extends BaseEntity, TenantAware {  
-  
-    ...省略其他代码...  
+```@entity
+public interface Book extends BaseEntity, TenantAware {
+
+    ...省略其他代码...
 }
+
 ```
 
 Book.kt
 
-```
-@Entity  
-interface Book : BaseEntity, TenantAware {  
-  
-    ...省略其他代码...  
+```@entity
+interface Book : BaseEntity, TenantAware {
+
+    ...省略其他代码...
 }
+
 ```
 
 修改`Book`，让它不光继承`BaseEntity`，还继承`TenantAware`
@@ -190,8 +192,8 @@ interface Book : BaseEntity, TenantAware {
 
 `@MapperSuperclass`的作用不仅仅是减少重复代码，还可以和其他另外两个功能配合使用
 
-* [全局过滤器](/zh/docs/query/global-filter)
-* [拦截器](/zh/docs/mutation/draft-interceptor)
+- [全局过滤器](/zh/docs/query/global-filter)
+- [拦截器](/zh/docs/mutation/draft-interceptor)
 
 在和它们配合使用时，多继承可以获得良好的灵活性。
 

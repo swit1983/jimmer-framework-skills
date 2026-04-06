@@ -2,7 +2,7 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/
 
-* 配置篇
+- 配置篇
 
 # 配置篇
 

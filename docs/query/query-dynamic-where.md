@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/query/dynamic-where
 
-* [查询篇](/zh/docs/query/)
-* 动态筛选
+- [查询篇](/zh/docs/query/)
+- 动态筛选
 
 本页总览
 
@@ -11,82 +11,82 @@
 
 ## 基本用法[​](#基本用法 "基本用法的直接链接")
 
-* Java API使用链式方式构建DSL，为了不打断链式代码书写，使用`whereIf`方法按条件添加where条件。
-* Kotlin API使用lambda构建DSL，动态查询无需专用API支持。
+- Java API使用链式方式构建DSL，为了不打断链式代码书写，使用`whereIf`方法按条件添加where条件。
+- Kotlin API使用lambda构建DSL，动态查询无需专用API支持。
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-public List<Book> findBooks(@Nullable String name) {  
-  
-    BookTable table = Tables.BOOK_TABLE;  
-  
-    return sqlClient  
-        .createQuery(table)  
-        .whereIf(  
-            name != null && !name.isEmpty(),  
-            table.name().eq(name)  
-        )  
-        .orderBy(table.name().asc(), table.edition().desc())  
-        .select(table)  
-        .execute();  
+```public list<book> findbooks(@nullable string name) {
+    BookTable table = Tables.BOOK_TABLE;
+
+    return sqlClient
+        .createQuery(table)
+        .whereIf(
+            name != null && !name.isEmpty(),
+            table.name().eq(name)
+        )
+        .orderBy(table.name().asc(), table.edition().desc())
+        .select(table)
+        .execute();
 }
-```
 
 ```
-fun findBooks(name: String?): List<Book> =  
-    sqlClient  
-        .createQuery(Book::class) {  
-            name?.takeIf { it.isNotEmpty() }?.let {  
-                where(table.name eq it)  
-            }  
-            orderBy(table.name.asc(), table.edition.desc())  
-            select(table)  
-        }  
+
+```fun findbooks(name: string?): list<book> =
+    sqlClient
+        .createQuery(Book::class) {
+            name?.takeIf { it.isNotEmpty() }?.let {
+                where(table.name eq it)
+            }
+            orderBy(table.name.asc(), table.edition.desc())
+            select(table)
+        }
         .execute()
+
 ```
 
-* 调用`findBooks(null)`，生成的SQL为
+- 调用`findBooks(null)`，生成的SQL为
 
-  ```
-  select  
-      tb_1_.ID,  
-      tb_1_.NAME,  
-      tb_1_.EDITION,  
-      tb_1_.PRICE,  
-      tb_1_.STORE_ID  
-  from BOOK tb_1_  
-  order by  
-      tb_1_.NAME asc,  
+  ```select
+      tb_1_.ID,
+      tb_1_.NAME,
+      tb_1_.EDITION,
+      tb_1_.PRICE,
+      tb_1_.STORE_ID
+  from BOOK tb_1_
+  order by
+      tb_1_.NAME asc,
       tb_1_.EDITION desc
-  ```
-* 调用`findBooks("SQL in Action")`，生成的SQL为
 
-  ```
-  select  
-      tb_1_.ID,  
-      tb_1_.NAME,  
-      tb_1_.EDITION,  
-      tb_1_.PRICE,  
-      tb_1_.STORE_ID  
-  from BOOK tb_1_  
-  where  
-      tb_1_.NAME = ? /* SQL in Action */  
-  order by  
-      tb_1_.NAME asc,  
+```
+
+- 调用`findBooks("SQL in Action")`，生成的SQL为
+
+  ```select
+      tb_1_.ID,
+      tb_1_.NAME,
+      tb_1_.EDITION,
+      tb_1_.PRICE,
+      tb_1_.STORE_ID
+  from BOOK tb_1_
+  where
+      tb_1_.NAME = ? /* SQL in Action */
+  order by
+      tb_1_.NAME asc,
       tb_1_.EDITION desc
-  ```
+
+```
 
 ## Java开发人员注意事项[​](#java开发人员注意事项 "Java开发人员注意事项的直接链接")
 
 Java开发人员请注意，上面的的代码
 
-```
-.whereIf(  
-    name != null && !name.isEmpty(),  
-    table.name().eq(name)  
+```.whereif(
+    name != null && !name.isEmpty(),
+    table.name().eq(name)
 )
+
 ```
 
 即便name为null，whereIf的条件并不成立，第二个参数`table.name().eq(name)`也会被执行，这是几乎所有编程语言的特性。
@@ -101,11 +101,11 @@ Java开发人员请注意，上面的的代码
 
 以大于或等于操作而言`ge`，可以如此添加动态查询条件
 
-```
-.whereIf(  
-    minPrice != null,  
-    () -> table.price().ge(minPrice)  
+```.whereif(
+    minPrice != null,
+    () -> table.price().ge(minPrice)
 )
+
 ```
 
 这里，使用lambda表达式延迟表达式的构建时机即可。只有当条件满足时，才会构建表达式。
@@ -114,59 +114,59 @@ Java开发人员请注意，上面的的代码
 
 让我们来看一个更完整的例子
 
-* Java
-* Kotlin
+- Java
+- Kotlin
 
-```
-public List<Book> findBooks(  
-    @Nullable String name,  
-    @Nullable BigDecimal minPrice,  
-    @Nullable BigDecimal maxPrice  
-) {  
-  
-    BookTable table = Tables.BOOK_TABLE;  
-  
-    return sqlClient  
-        .createQuery(table)  
-        .whereIf(  
-            name != null && !name.isEmpty(),  
-            table.name().eq(name)  
-        )  
-        .whereIf(  
-            minPrice != null,  
-            () -> table.price().ge(minPrice)  
-        )  
-        .whereIf(  
-            maxPrice != null,  
-            () -> table.price().le(maxPrice)  
-        )  
-        .orderBy(table.name().asc(), table.edition().desc())  
-        .select(table)  
-        .execute();  
+```public list<book> findbooks(
+    @Nullable String name,
+    @Nullable BigDecimal minPrice,
+    @Nullable BigDecimal maxPrice
+) {
+
+    BookTable table = Tables.BOOK_TABLE;
+
+    return sqlClient
+        .createQuery(table)
+        .whereIf(
+            name != null && !name.isEmpty(),
+            table.name().eq(name)
+        )
+        .whereIf(
+            minPrice != null,
+            () -> table.price().ge(minPrice)
+        )
+        .whereIf(
+            maxPrice != null,
+            () -> table.price().le(maxPrice)
+        )
+        .orderBy(table.name().asc(), table.edition().desc())
+        .select(table)
+        .execute();
 }
-```
 
 ```
-fun findBooks(  
-    name: String? = null,  
-    minPrice: BigDecimal? = null,  
-    maxPrice: BigDecimal? = null  
-): List<Book> =  
-    sqlClient  
-        .createQuery(Book::class) {  
-            name?.takeIf { it.isNotEmpty() }?.let {  
-                where(table.name eq it)  
-            }  
-            minPrice?.let {  
-                where(table.price ge it)  
-            }  
-            maxPrice?.let {  
-                where(table.price le it)  
-            }  
-            orderBy(table.name.asc(), table.edition.desc())  
-            select(table)  
-        }  
+
+```fun findbooks(
+    name: String? = null,
+    minPrice: BigDecimal? = null,
+    maxPrice: BigDecimal? = null
+): List<Book> =
+    sqlClient
+        .createQuery(Book::class) {
+            name?.takeIf { it.isNotEmpty() }?.let {
+                where(table.name eq it)
+            }
+            minPrice?.let {
+                where(table.price ge it)
+            }
+            maxPrice?.let {
+                where(table.price le it)
+            }
+            orderBy(table.name.asc(), table.edition.desc())
+            select(table)
+        }
         .execute()
+
 ```
 
 ## 多表操作[​](#多表操作 "多表操作的直接链接")

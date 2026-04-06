@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/quick-view/dsl/
 
-* [快速预览 ★](/zh/docs/quick-view/)
-* 3. 任意动态查询
+- [快速预览 ★](/zh/docs/quick-view/)
+- 3. 任意动态查询
 
 # 3. 任意动态查询
 

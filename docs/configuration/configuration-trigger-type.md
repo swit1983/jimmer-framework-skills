@@ -2,8 +2,8 @@
 
 > 来源: https://jimmer.deno.dev/zh/docs/configuration/trigger-type
 
-* [配置篇](/zh/docs/configuration/)
-* 触发器类型
+- [配置篇](/zh/docs/configuration/)
+- 触发器类型
 
 # 触发器类型
 
