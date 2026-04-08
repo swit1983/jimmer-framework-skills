@@ -121,27 +121,240 @@ sqlClient.saveCommand(book)
     .execute();
 ```
 
-## 脱钩操作 (Dissociate)
+## 脱钩操作 (Dissociate) - 详解
 
-当关联被解除时，对关联对象的处理：
+### 什么是脱钩？
+
+**脱钩（Dissociate）** 是指在保存数据时，新旧数据结构对比后，**存在于旧数据但不存在于新数据中的关联对象**需要被"解除关联"的操作。
+
+**示例场景：**
+```
+数据库现有：  书籍A → 关联作者1、作者2、作者3
+用户提交：   书籍A → 关联作者1（只保留作者1）
+脱钩对象：   作者2、作者3 需要被脱钩
+```
+
+### 脱钩的两种关联类型
+
+| 关联类型 | 说明 | 示例 | 脱钩行为 |
+|---------|------|------|---------|
+| **中间表关联** | 多对多关联，通过中间表连接 | `Book.authors` ↔ `Author.books` | 删除中间表记录，关联对象本身不受影响 |
+| **子表关联** | 一对多/多对一，通过外键关联 | `BookStore.books`（子表指向父表的外键） | 需要配置脱钩策略，行为取决于配置 |
+
+### 五种脱钩模式详解
+
+| 模式 | 行为描述 | 适用场景 | 注意事项 |
+|------|---------|---------|---------|
+| **`NONE`** (默认) | 行为取决于全局配置 `jimmer.default-dissociate-action-checking` | 默认情况 | 若配置为 `true` 或有真实外键约束，实际表现为 `CHECK`；否则表现为 `LAX` |
+| **`LAX`** | 脱钩时不执行任何操作 | 不关心孤儿数据 | 与 `REPLACE` 模式冲突时会被忽略 |
+| **`CHECK`** | 如果存在需要脱钩的对象，抛出异常阻止操作 | 禁止意外脱钩 | 用于保护数据完整性，防止误操作 |
+| **`SET_NULL`** | 将被脱钩对象的外键设置为 `NULL` | 保留子对象，仅解除关联 | 要求外键字段可为空 |
+| **`DELETE`** | 删除被脱钩的关联对象 | 级联删除孤儿数据 | 如果对象还有更深层的关联，会递归处理 |
+
+### 脱钩模式配置方式
+
+#### 方式一：实体注解（静态配置，全局生效）
 
 ```java
-// 脱钩时删除作者（级联删除）
-sqlClient.saveCommand(book)
+@Entity
+public interface Book {
+    
+    @OnDissociate(DissociateAction.SET_NULL)  // 配置脱钩模式
+    @Nullable
+    @ManyToOne
+    BookStore store();
+    
+    // ... 其他属性
+}
+```
+
+```kotlin
+@Entity
+interface Book {
+    
+    @OnDissociate(DissociateAction.SET_NULL)
+    @ManyToOne
+    val store: BookStore?
+    
+    // ... 其他属性
+}
+```
+
+#### 方式二：保存指令（动态配置，单次生效）
+
+```java
+// SET_NULL 模式 - 脱钩时将外键设为 NULL
+Book saved = sqlClient
+    .saveCommand(book)
+    .setDissociateAction(
+        BookProps.STORE, 
+        DissociateAction.SET_NULL
+    )
+    .execute()
+    .getModifiedEntity();
+
+// DELETE 模式 - 脱钩时删除关联对象
+Book saved = sqlClient
+    .saveCommand(book)
     .setDissociateAction(
         BookProps.AUTHORS, 
         DissociateAction.DELETE
     )
-    .execute();
+    .execute()
+    .getModifiedEntity();
 
-// 脱钩时将作者的外键设为 NULL
-sqlClient.saveCommand(book)
+// CHECK 模式 - 禁止脱钩，存在脱钩对象时抛出异常
+Book saved = sqlClient
+    .saveCommand(book)
     .setDissociateAction(
-        BookProps.AUTHORS,
+        BookProps.AUTHORS, 
+        DissociateAction.CHECK
+    )
+    .execute()
+    .getModifiedEntity();
+```
+
+```kotlin
+// Kotlin 版本
+sqlClient.save(book) {
+    setDissociateAction(
+        Book::store,
         DissociateAction.SET_NULL
     )
-    .execute();
+}
 ```
+
+### 完整实战示例
+
+#### 场景 1：书籍更换书店（SET_NULL 模式）
+
+```java
+// 书籍原本属于 "O'REILLY" 书店
+// 现在要将书籍移到 "MANNING" 书店
+// 原书店中的该书籍记录外键设为 NULL
+
+Book book = BookDraft.$.produce(draft -> {
+    draft.setId(1L);  // 已存在的书籍
+    draft.setName("Learning GraphQL");
+    draft.setStoreId(2L);  // 新书店 MANNING 的 ID
+});
+
+Book saved = sqlClient
+    .saveCommand(book)
+    .setDissociateAction(
+        BookProps.STORE, 
+        DissociateAction.SET_NULL  // 原关联的外键设为 NULL
+    )
+    .execute()
+    .getModifiedEntity();
+```
+
+**执行的 SQL 流程：**
+```sql
+-- 1. 更新书籍的 store_id
+UPDATE book SET store_id = 2 WHERE id = 1;
+
+-- 2. 查找原书店中被脱钩的其他书籍（如果有）
+-- 将这些书籍的 store_id 设为 NULL
+UPDATE book 
+SET store_id = NULL 
+WHERE store_id = 1 
+  AND id NOT IN (1, 2, 3, ...);  -- 保留当前保存的书籍
+```
+
+#### 场景 2：彻底删除书籍的关联作者（DELETE 模式）
+
+```java
+// 书籍有 3 个作者：作者1、作者2、作者3
+// 现在只保留作者1，作者2和作者3需要被彻底删除
+
+Book book = BookDraft.$.produce(draft -> {
+    draft.setId(1L);
+    draft.setName("GraphQL in Action");
+    
+    // 只保留作者1
+    draft.addIntoAuthors(author -> {
+        author.setId(1L);  // 已存在的作者1
+    });
+    // 注意：没有添加作者2和作者3，它们会被脱钩
+});
+
+Book saved = sqlClient
+    .saveCommand(book)
+    .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.REPLACE)  // 替换模式
+    .setDissociateAction(
+        BookProps.AUTHORS, 
+        DissociateAction.DELETE  // 彻底删除脱钩的作者
+    )
+    .execute()
+    .getModifiedEntity();
+```
+
+**执行的 SQL 流程：**
+```sql
+-- 1. 更新书籍基本信息
+UPDATE book SET name = 'GraphQL in Action' WHERE id = 1;
+
+-- 2. 删除中间表中被脱钩的关联（作者2、作者3）
+DELETE FROM book_author_mapping 
+WHERE book_id = 1 
+  AND author_id IN (2, 3);
+
+-- 3. 彻底删除被脱钩的作者对象
+DELETE FROM author WHERE id IN (2, 3);
+```
+
+#### 场景 3：禁止意外脱钩（CHECK 模式）
+
+```java
+// 业务规则：禁止随意移除书籍的关联作者
+// 如果尝试移除会抛出异常
+
+Book book = BookDraft.$.produce(draft -> {
+    draft.setId(1L);
+    draft.setName("GraphQL in Action");
+    
+    // 尝试只保留作者1，移除作者2和作者3
+    draft.addIntoAuthors(author -> author.setId(1L));
+});
+
+try {
+    Book saved = sqlClient
+        .saveCommand(book)
+        .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.REPLACE)
+        .setDissociateAction(
+            BookProps.AUTHORS, 
+            DissociateAction.CHECK  // 禁止脱钩
+        )
+        .execute()
+        .getModifiedEntity();
+} catch (Exception e) {
+    // 抛出异常：
+    // "Cannot dissociate child objects because the dissociation 
+    //  action of the many-to-one property 'Book.authors' 
+    //  is configured as CHECK"
+    System.err.println("禁止移除书籍的作者！" + e.getMessage());
+}
+```
+
+### 脱钩模式选择指南
+
+| 业务场景 | 推荐模式 | 说明 |
+|---------|---------|------|
+| 更换父对象，保留子对象 | `SET_NULL` | 子对象变为"孤儿"但不被删除 |
+| 彻底清理孤儿数据 | `DELETE` | 子对象随关联解除被删除 |
+| 防止误操作导致数据丢失 | `CHECK` | 存在脱钩风险时抛出异常 |
+| 不关心孤儿数据 | `LAX` | 脱钩时不做任何处理（谨慎使用） |
+
+### 注意事项
+
+1. **递归脱钩风险**：使用 `DELETE` 模式时，如果被删除的对象还有更深层的关联，可能会触发级联删除，导致大量数据被意外删除。建议配合 `@OnDissociate` 注解在实体层面做好防护。
+
+2. **外键约束**：`SET_NULL` 模式要求外键字段必须是可空的（`nullable`），否则会导致数据库约束错误。
+
+3. **缓存一致性**：当使用 `LAX` 模式配合数据库级联（如 `ON DELETE CASCADE`）时，Jimmer 的缓存可能无法感知数据变化，导致缓存不一致。在启用缓存的项目中请谨慎使用。
+
+4. **优先级关系**：动态配置（保存指令中设置）会覆盖静态配置（实体注解），可以根据具体业务场景灵活调整。
 
 ## 批量保存
 
