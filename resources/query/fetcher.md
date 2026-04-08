@@ -2,50 +2,88 @@
 
 > 一句话：**查询任意形状的数据结构，就如同 GraphQL 所做的那样**。
 
-## 引入对象抓取器的原因
+## 概念
 
-在了解对象抓取器之前，有必要先了解常规的属性查询。
+对象抓取器是 Jimmer 的核心功能之一，用于**指定查询返回的数据结构形状**。
 
-例如，我需要这样一个 SQL：
+传统 ORM 容易遇到两个问题：
+1. **Over-fetch**：不需要的属性也被查询，造成浪费
+2. **Under-fetch**：需要的属性未被获取，导致程序无法正确运行
 
-```sql
-select
-    b.id,
-    b.name,
-    b.edition
-    /* 不需要`b.price`和`b.store_id` */
-from book b
-where b.edition = 3;
-```
-
-在这个 SQL 中，我们只查询部分列。如果我们需要返回对象而不是元组，通常需要定义一个 DTO 类并手动转换。
-
-Jimmer 的对象抓取器很好地解决了这个问题：**无需定义 DTO，直接查询指定形状的数据结构**。
+对象抓取器很好地解决了这个问题：**只查询需要的字段，返回指定形状的数据**。
 
 ## 基本用法
 
-### Java
+### 1. 创建 Fetcher
+
+#### Java
+
+```java
+// 基本 Fetcher：指定需要的字段
+Fetcher<Book> fetcher = BookFetcher.$
+    .name()
+    .edition()
+    .price();
+
+// 关联对象抓取
+Fetcher<Book> fetcherWithStore = BookFetcher.$
+    .name()
+    .price()
+    .store(BookStoreFetcher.$.name().website());
+
+// 关联集合抓取
+Fetcher<Book> fetcherWithAuthors = BookFetcher.$
+    .name()
+    .authors(AuthorFetcher.$.firstName().lastName());
+```
+
+#### Kotlin
+
+```kotlin
+val fetcher = BookFetcher {
+    name()
+    edition()
+    price()
+}
+
+val fetcherWithStore = BookFetcher {
+    name()
+    price()
+    store {
+        name()
+        website()
+    }
+}
+
+val fetcherWithAuthors = BookFetcher {
+    name()
+    authors {
+        firstName()
+        lastName()
+    }
+}
+```
+
+### 2. 在查询中使用 Fetcher
+
+#### Java
 
 ```java
 BookTable book = BookTable.$;
 
-// 创建 Fetcher
-Fetcher<Book> fetcher = BookFetcher.$
-    .name()
-    .edition()
-    .price()
-    .store(BookStoreFetcher.$.name())  // 关联对象
-    .authors(AuthorFetcher.$.firstName().lastName());  // 关联集合
-
-// 使用 Fetcher 查询
 List<Book> books = sqlClient
     .createQuery(book)
     .where(book.edition().eq(3))
-    .select(book.fetch(fetcher))
+    .select(book.fetch(BookFetcher.$
+        .name()
+        .edition()
+        .price()
+        .store(BookStoreFetcher.$.name())
+    ))
     .execute();
 ```
 
-### Kotlin
+#### Kotlin
 
 ```kotlin
 val books = sqlClient
@@ -56,128 +94,72 @@ val books = sqlClient
             edition()
             price()
             store { name() }
-            authors { firstName(); lastName() }
         })
     }
     .execute()
 ```
 
-## Fetcher 构建方式
+## 快捷方法
 
-### 1. 基本属性选择
+### allScalarFields() - 所有标量字段
 
 ```java
-// 选择特定字段
-Fetcher<Book> fetcher = BookFetcher.$
-    .id()
-    .name()
-    .price();
-
-// 选择所有标量字段（非关联属性）
+// 抓取所有标量属性（非关联属性）
 Fetcher<Book> fetcher = BookFetcher.$.allScalarFields();
+// 等价于：id, name, edition, price 等所有非关联字段
+```
 
-// 选择所有表字段
+### allTableFields() - 所有表字段
+
+```java
+// 抓取所有表字段（包括外键）
 Fetcher<Book> fetcher = BookFetcher.$.allTableFields();
 ```
 
-### 2. 关联对象抓取
+## 关联属性抓取
+
+### 引用关联（多对一）
 
 ```java
-// 多对一关联
+// Book.store: 多对一关联
 Fetcher<Book> fetcher = BookFetcher.$
     .name()
-    .store(BookStoreFetcher.$.name().website());  // 抓取书店的名字和网站
-
-// 一对多关联
-Fetcher<Book> fetcher = BookFetcher.$
-    .name()
-    .authors(AuthorFetcher.$.firstName().lastName());  // 抓取作者列表
-
-// 控制关联集合的过滤和排序
-Fetcher<Book> fetcher = BookFetcher.$
-    .name()
-    .authors(
-        AuthorFetcher.$.firstName().lastName(),
-        author -> author.firstName().asc()  // 按名字升序
-    );
+    .store(BookStoreFetcher.$.name().website());
 ```
 
-### 3. 递归抓取（自关联）
+### 集合关联（多对多/一对多）
 
 ```java
-// 递归抓取所有下级部门
+// Book.authors: 多对多关联
+Fetcher<Book> fetcher = BookFetcher.$
+    .name()
+    .authors(AuthorFetcher.$.firstName().lastName());
+```
+
+## 递归抓取（自关联）
+
+```java
+// 部门层级：递归抓取所有子部门
 Fetcher<Department> fetcher = DepartmentFetcher.$
     .name()
     .recursive(Department::subDepartments, 5);  // 最大深度5
 
-// 无限深度递归（直到没有更多数据）
+// 评论树：无限深度递归
 Fetcher<Comment> fetcher = CommentFetcher.$
     .content()
     .author(UserFetcher.$.name())
     .recursive(Comment::replies);  // 不指定深度，无限递归
 ```
 
-## 高级用法
+## vs GraphQL
 
-### 1. 条件抓取
+| 对比 | Jimmer Fetcher | GraphQL |
+|------|----------------|---------|
+| 使用范围 | ORM 基础 API，可在任何代码中使用 | 仅能在 HTTP 服务层面使用 |
+| 递归查询 | 支持无限深度递归 | 不支持 |
+| 类型安全 | 编译时检查 | 运行时检查 |
 
-```java
-// 根据条件决定是否抓取某个属性
-Fetcher<Book> fetcher = BookFetcher.$
-    .name()
-    .price(ctx -> ctx.detachedCriteria() > 10)  // 只在价格大于10时抓取
-    .store(ctx -> ctx.detachedCriteria() != null);  // 只在有关联书店时抓取
-```
+## 代码示例
 
-### 2. 动态构建 Fetcher
-
-```java
-// 根据业务条件动态构建 Fetcher
-public Fetcher<Book> buildFetcher(boolean needStore, boolean needAuthors) {
-    BookFetcher.Builder builder = BookFetcher.$.name().edition();
-    
-    if (needStore) {
-        builder.store(BookStoreFetcher.$.name());
-    }
-    
-    if (needAuthors) {
-        builder.authors(AuthorFetcher.$.firstName().lastName());
-    }
-    
-    return builder.build();
-}
-```
-
-## Fetcher 与 DTO 对比
-
-| 特性 | Fetcher | DTO |
-|------|---------|-----|
-| 类型定义 | 无需定义，动态构建 | 需要预先定义类 |
-| 类型安全 | 编译时检查 | 编译时检查 |
-| 灵活性 | 极高，运行时决定形状 | 固定，需为每种形状定义新类 |
-| 代码量 | 少 | 多（DTO 爆炸问题） |
-| 维护成本 | 低 | 高 |
-
-## 最佳实践
-
-1. **按需抓取**：只抓取实际需要的字段，避免过度查询
-2. **关联控制**：对关联对象的抓取要谨慎，避免深层嵌套导致性能问题
-3. **复用 Fetcher**：对于常用的抓取模式，可以定义常量复用
-4. **动态构建**：根据业务场景动态决定抓取内容，提高灵活性
-
-```java
-// 定义常用的 Fetcher 常量
-public class Fetchers {
-    public static final Fetcher<Book> BOOK_SIMPLE = BookFetcher.$.name().price();
-    
-    public static final Fetcher<Book> BOOK_WITH_STORE = BookFetcher.$
-        .name()
-        .price()
-        .store(BookStoreFetcher.$.name());
-    
-    public static final Fetcher<Book> BOOK_FULL = BookFetcher.$
-        .allScalarFields()
-        .store(BookStoreFetcher.$.allScalarFields())
-        .authors(AuthorFetcher.$.allScalarFields());
-}
-```
+- [基础示例](../../examples/fetch/basic-fetch-example.java) - Java
+- [基础示例](../../examples/fetch/basic-fetch-example.kt) - Kotlin
