@@ -98,28 +98,81 @@ Book saved = sqlClient
 
 控制关联对象的保存行为：
 
-### AssociatedSaveMode
+### AssociatedSaveMode - 关联对象保存模式
 
-| 模式 | 说明 |
-|------|------|
-| `AUTO` | 根据 ID 自动判断 |
-| `APPEND` | 只建立关联，不修改关联对象 |
-| `APPEND_IF_ABSENT` | 不存在时新增，存在时只建立关联 |
-| `UPDATE` | 更新关联对象 |
-| `MERGE` | 根据 ID 判断 INSERT 或 UPDATE |
-| `REPLACE` | 删除旧关联，建立新关联 |
+| 模式 | 适用范围 | 接受Wild对象 | 描述 |
+|------|---------|-------------|------|
+| `APPEND` | 所有关联 | ✅ 是 | **无条件 INSERT** - 直接插入关联对象，不做任何存在性检查 |
+| `APPEND_IF_ABSENT` | 所有关联 | ❌ 否 | **不存在才插入** - 先按id/key检查是否存在，存在则忽略，不存在则插入 |
+| `UPDATE` | 所有关联 | ✅ 是 | **强制更新** - 按id或key更新关联对象，要求对象必须已存在 |
+| `MERGE` | 所有关联 | ❌ 否 | **智能合并** - 先检查是否存在，存在则更新，不存在则插入 |
+| `REPLACE` | 后置关联 | ❌ 否 | **替换模式** - 在MERGE基础上，对不再需要的关联进行脱钩操作 |
+| `VIOLENTLY_REPLACE` | 后置关联 | ✅ 是 | **暴力替换** - 删除所有旧关联和对象，重新插入所有新对象 |
+
+> **⚠️ 注意**：
+> - `APPEND` 和 `UPDATE` 接受 **Wild对象**（无id无key的对象）
+> - `APPEND_IF_ABSENT` / `MERGE` / `REPLACE` 要求对象必须有 **id 或 key**
+> - `VIOLENTLY_REPLACE` 性能较低，且可能导致级联删除，**不推荐，请慎用**
+
+#### 各模式详解
+
+| 模式 | 行为流程 | 适用场景 |
+|------|---------|---------|
+| **APPEND** | 直接执行 `INSERT`，不做任何检查 | 确定是新增数据，或批量导入时 |
+| **APPEND_IF_ABSENT** | 1. 按id/key查询是否存在<br>2. 存在 → 忽略<br>3. 不存在 → `INSERT` | 幂等插入，防止重复数据 |
+| **UPDATE** | 1. 有id → 按id更新<br>2. 无id有key → 按key更新 | 确定是修改现有数据 |
+| **MERGE** | 1. 按id/key查询是否存在<br>2. 存在 → `UPDATE`<br>3. 不存在 → `INSERT` | 不确定是新增还是修改（最常用） |
+| **REPLACE** | 1. 执行 `MERGE`<br>2. 对旧结构中不再需要的数据执行脱钩 | 全量替换关联列表 |
+| **VIOLENTLY_REPLACE** | 1. 删除所有旧关联和相关对象<br>2. 重新插入所有新对象 | 只传递了简单的关联信息，无id/key |
+
+#### 代码示例
 
 ```java
-// 只建立关联，不修改作者信息
+// APPEND - 无条件插入（不关心是否已存在）
 sqlClient.saveCommand(book)
     .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.APPEND)
     .execute();
 
-// 替换作者（删除旧关联，建立新关联）
+// APPEND_IF_ABSENT - 不存在才插入（幂等）
+sqlClient.saveCommand(book)
+    .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.APPEND_IF_ABSENT)
+    .execute();
+
+// UPDATE - 强制更新（要求对象必须存在）
+sqlClient.saveCommand(book)
+    .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.UPDATE)
+    .execute();
+
+// MERGE - 智能判断插入或更新（推荐）
+sqlClient.saveCommand(book)
+    .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.MERGE)
+    .execute();
+
+// REPLACE - 替换关联列表（全量替换）
 sqlClient.saveCommand(book)
     .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.REPLACE)
     .execute();
+
+// VIOLENTLY_REPLACE - 暴力替换（慎用）
+sqlClient.saveCommand(book)
+    .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.VIOLENTLY_REPLACE)
+    .execute();
+
+// 批量设置所有关联的模式
+sqlClient.saveCommand(book)
+    .setAssociatedModeAll(AssociatedSaveMode.MERGE)
+    .execute();
 ```
+
+#### 快捷方法的默认模式
+
+| 方法 | 默认 AssociatedSaveMode |
+|------|------------------------|
+| `save()` / `saveEntities()` / `saveInputs()` | `REPLACE` |
+| `insert()` / `insertEntities()` / `insertInputs()` | `APPEND` |
+| `insertIfAbsent()` / `insertEntitiesIfAbsent()` / `insertInputsIfAbsent()` | `APPEND_IF_ABSENT` |
+| `update()` / `updateEntities()` / `updateInputs()` | `UPDATE` |
+| `merge()` / `mergeEntities()` / `mergeInputs()` | `MERGE` |
 
 ## 脱钩操作 (Dissociate) - 详解
 
