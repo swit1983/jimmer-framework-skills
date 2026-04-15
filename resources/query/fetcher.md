@@ -138,82 +138,114 @@ Fetcher<Book> fetcher = BookFetcher.$
 
 ## 属性过滤器（Property Filters）
 
-属性过滤器用于在抓取关联集合时对子元素进行**过滤和限制**，这是处理大量关联数据的重要工具。
+属性过滤器用于为关联对象 *(而非主查询语句所针对的当前对象)* 设置 `where` 过滤条件和 `orderBy` 排序。
 
 ### 基本用法
 
-```java
-// 只抓取启用状态的用户
-Fetcher<Department> fetcher = DepartmentFetcher.$
-    .name()
-    .employees(
-        EmployeeFetcher.$.firstName().lastName(),
-        filter -> filter.status().eq(Status.ACTIVE)  // 过滤条件
-    );
-```
-
-### 限制数量（Limit）
+#### Java
 
 ```java
-// 每个部门只抓取前5名员工
-Fetcher<Department> fetcher = DepartmentFetcher.$
-    .name()
-    .employees(
-        EmployeeFetcher.$.firstName().lastName(),
-        filter -> filter.limit(5)  // 限制数量
-    );
+BookTable table = Tables.BOOK_TABLE;
+
+List<Book> books = sqlClient
+    .createQuery(table)
+    .where(table.name().eq("GraphQL in Action"))
+    .select(
+        table.fetch(
+            BookFetcher
+                .allScalarFields()
+                .authors(
+                    AuthorFetcher.allScalarFields(),
+                    cfg -> cfg.filter(args -> {
+                        AuthorTable author = args.getTable();
+                        args.where(
+                            Predicate.or(
+                                author.firstName().ilike("a"),
+                                author.lastName().ilike("a")
+                            )
+                        );
+                        args.orderBy(
+                            author.firstName(),
+                            author.lastName()
+                        );
+                    })
+                )
+        )
+    )
+    .execute();
 ```
 
-### 过滤 + 限制组合
-
-```java
-// 抓取每个部门中工资最高的前3名正式员工
-Fetcher<Department> fetcher = DepartmentFetcher.$
-    .name()
-    .employees(
-        EmployeeFetcher.$.firstName().lastName().salary(),
-        filter -> filter
-            .employeeType().eq(EmployeeType.FULL_TIME)  // 过滤正式员工
-            .orderBy(SalaryTable.$.amount.desc())          // 按工资降序
-            .limit(3)                                       // 取前3名
-    );
-```
-
-### Kotlin 语法
+#### Kotlin
 
 ```kotlin
-val fetcher = DepartmentFetcher {
-    name()
-    employees({
-        firstName()
-        lastName()
-    }, filter = {
-        status() eq Status.ACTIVE
-        limit(10)
-    })
+val books = sqlClient.createQuery(Book::class) {
+    where(table.name eq "GraphQL in Action")
+    select(
+        table.fetchBy {
+            allScalarFields()
+            authors({
+                filter {
+                    where(
+                        or(
+                            table.firstName ilike "a",
+                            table.lastName ilike "a"
+                        )
+                    )
+                    orderBy(
+                        table.firstName,
+                        table.lastName
+                    )
+                }
+            }) {
+                allScalarFields()
+            }
+        }
+    )
 }
 ```
 
-### ⚠️ 重要注意事项
+### 效果说明
 
-1. **性能影响**：属性过滤器在数据库层面执行过滤，但如果关联数据量巨大，仍可能影响性能
+对于每一个返回的 `Book` 对象，其关联集合 `Book.authors` **可能不包含**数据库中所有关联对象，因为该关联集合被施加了属性级过滤。
 
-2. **内存控制**：配合 `limit()` 使用可以有效控制内存占用
+### ⚠️ 重要说明
 
-3. **与 Fetcher 的区别**：
-   - Fetcher：决定**返回什么字段**
-   - Property Filter：决定**返回哪些记录**
+1. **作用对象**：属性过滤器针对的是**关联对象**，而非主查询的对象
+2. **API 风格**：使用 `cfg.filter(args -> { ... })`，通过 `args.getTable()` 获取关联表，通过 `args.where()` 和 `args.orderBy()` 设置条件
+3. **复杂条件**：支持使用 `Predicate.or()`、`Predicate.and()` 等组合复杂过滤条件
+4. **与主查询的区别**：
+   - 主查询 `where()`：过滤主对象（如 Book）
+   - 属性过滤器：过滤关联集合（如 Book.authors）
 
-4. **排序限制**：在使用 `limit()` 时，建议同时指定排序，否则返回的结果可能不确定
+### 与 DTO 配合使用
 
-### 典型应用场景
+也可以在 DTO 中定义属性过滤器：
 
-| 场景 | 解决方案 |
-|------|----------|
-| 用户消息列表只显示最新10条 | `filter -> filter.limit(10).orderBy(...desc())` |
-| 只显示启用状态的数据 | `filter -> filter.status().eq(Status.ACTIVE)` |
-| 动态过滤（根据权限） | 在 filter lambda 中加入条件判断 |
-| 分页加载大量关联数据 | 配合 `limit()` 和 `offset()` 实现 |
+**Book.dto**
+```
+export com.yourcompany.yourproject.model.Book
+    -> package com.yourcompany.yourproject.model.dto
+
+BookDetailView {
+    #allScalars
+
+    !where(firstName ilike '%a%' or lastName ilike '%a%')
+    !orderBy(firstName asc, lastName asc)
+    authors {
+        #allScalars
+    }
+}
+```
+
+使用时直接抓取：
+
+```java
+List<BookDetailView> books = sqlClient
+    .createQuery(table)
+    .where(table.name().eq("GraphQL in Action"))
+    .select(table.fetch(BookDetailView.class))
+    .execute();
+```
 
 ## 递归抓取（自关联）
 
