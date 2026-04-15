@@ -1,317 +1,253 @@
-# APT/KSP 配置指南
+# 保存前拦截器 (Draft Interceptor)
 
-> 本文档介绍 Jimmer 的预编译技术配置：Java 使用 APT，Kotlin 使用 KSP。
+> 本文档介绍如何使用 Jimmer 的保存前拦截器，在实体被保存前自动修改数据。
 
 ---
 
 ## 基本概念
 
-Jimmer 高度依赖于 JVM 生态的预编译技术：
+任何实体对象在被[保存指令](./save-command.md)保存（无论插入还是更新）前，都会被拦截器拦截。
 
-| 语言 | 技术 | 说明 |
-|------|------|------|
-| **Java** | **APT** (Annotation Processor Tool) | [IntelliJ IDEA 文档](https://www.jetbrains.com/help/idea/annotation-processors-support.html) |
-| **Kotlin** | **KSP** (Kotlin Symbol Processing) | [Kotlin 官方文档](https://kotlinlang.org/docs/ksp-overview.html) |
+在此，用户有一次修改被保存数据的机会，尤其是为某些缺失的属性赋值。
 
-### 为什么需要预编译？
+### 与数据库默认值的区别
 
-使用 APT/KSP 自动生成的代码，是**使用 Jimmer 所必须的**。例如：
-
-- `BookDraft` - 用于创建和修改实体
-- `BookTable` / `BookTableEx` - 用于 SQL DSL 查询
-- `BookFetcher` - 用于对象抓取器
-- DTO 类 - 根据 `.dto` 文件生成
-
-### 首次打开项目的注意事项
-
-使用 IntelliJ IDEA 打开 Jimmer 项目时，可能会发现自动生成的代码不存在。解决方法：
-
-**方法一**：先用命令行编译
-```bash
-# Maven
-./mvnw install
-
-# Gradle
-./gradlew build
-```
-然后再用 IntelliJ 打开项目。
-
-**方法二**：直接用 IntelliJ 打开，暂时无视 IDE 的错误，等待依赖下载完毕后，直接运行项目的 main 方法或单元测试。所有 IDE 错误将会自动消失。
+| 特性 | 数据库默认值 | 拦截器默认值 |
+|------|-------------|-------------|
+| 业务关联 | 无业务含义 | 可结合业务上下文（如当前用户信息） |
+| 灵活性 | 固定值 | 动态计算 |
+| 使用场景 | 简单初始值 | 复杂业务逻辑 |
 
 ---
 
-## 如何使用
+## 定义被拦截数据格式
 
-### 方法一：使用 Jimmer 标准构建方式
+Draft 拦截器和保存指令配合使用，在对象被保存之前调整数据。
 
-#### Java (Maven)
+### 示例：基础实体超类
 
-```xml
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.10.1</version>
-            <configuration>
-                <annotationProcessorPaths>
-                    <path>
-                        <groupId>org.babyfish.jimmer</groupId>
-                        <artifactId>jimmer-apt</artifactId>
-                        <version>${jimmer.version}</version>
-                    </path>
-                </annotationProcessorPaths>
-            </configuration>
-        </plugin>
-    </plugins>
-</build>
-```
-
-#### Java (Gradle)
-
-```groovy
-dependencies {
-    annotationProcessor "org.babyfish.jimmer:jimmer-apt:${jimmerVersion}"
-}
-```
-
-#### Kotlin (Gradle.kts)
-
-```kotlin
-plugins {
-    id("com.google.devtools.ksp") version "1.9.22-1.0.17"
-}
-
-dependencies {
-    ksp("org.babyfish.jimmer:jimmer-ksp:${jimmerVersion}")
-}
-```
-
-### 方法二：使用社区提供的 Gradle 插件
-
-[gradle-plugin-jimmer](https://github.com/ArgonarioD/gradle-plugin-jimmer)
-
-```groovy
-plugins {
-    id "tech.argonariod.gradle-plugin-jimmer" version "latest.release"
-}
-
-jimmer {
-    version = "${jimmerVersion}"
-}
-```
-
----
-
-## 在哪使用
-
-业务项目通常是多模块结构，不同子项目的配置不同：
-
-| 子项目类型 | 使用目的 | 注意事项 |
-|-----------|----------|----------|
-| **定义实体的项目** | 生成 Draft、SQL DSL、Fetcher | 必须配置 |
-| **定义 DTO 的项目** | 根据 `.dto` 文件生成 DTO 类型 | Java 项目需要 `@EnableDtoGeneration` |
-| **Spring Web 项目** | 生成 OpenAPI 文档、TypeScript 代码 | 支持远程异常 |
-
----
-
-## Java 代码风格
-
-Java 和 Kotlin 的抽象能力不同，导致 API 设计风格差异：
-
-### 对比
-
-| 功能 | Java | Kotlin |
-|------|------|--------|
-| **Draft** | 使用生成的类型 `BookDraft` | 使用原实体类型 `Book` |
-| **SQL DSL** | 使用生成的类型 `BookTable` | 使用原实体类型 `Book` |
-| **Fetcher** | 使用生成的类型 `BookFetcher` | 使用原实体类型 `Book` |
-
-### Java 代码示例
+假设大部分实体表都具备 `created_time`、`modified_time`、`created_by` 和 `modified_by` 四个字段，可以提供如下超类：
 
 ```java
-// Draft
-Book book = BookDraft.$.produce(b -> {
-    b.setName("SQL in Action");
-    b.addIntoAuthors(a -> a.setName("Jessica"));
-    b.addIntoAuthors(a -> a.setName("Bob"));
+@MappedSuperclass
+public interface BaseEntity {
+    
+    LocalDateTime createdTime();
+    
+    LocalDateTime modifiedTime();
+    
+    @Nullable
+    @ManyToOne
+    @OnDissociate(DissociateAction.SET_NULL)
+    User creator();
+    
+    @Nullable
+    @ManyToOne
+    @OnDissociate(DissociateAction.SET_NULL)
+    User editor();
+}
+```
+
+所有需要这些字段的实体都从此超类派生即可。
+
+> **注意**：这里的 `@OnDissociate(DissociateAction.SET_NULL)` 是为了防止因这两个外键导致相关 User 数据的删除操作被阻止。当相关 User 被删除后，这两个外键自动清空。
+
+### 拦截抽象类型 vs 实体类型
+
+用户可以直接拦截实体类型（被 `@Entity` 修饰），而非抽象类型（被 `@MappedSuperclass` 修饰）。
+
+然而，如果选择拦截抽象类型，那么所有派生实体类型的保存操作都将会被拦截，这可以极大地提高系统的灵活性，尤其是抽象类型支持多继承时。
+
+所以，本文的例子选择拦截抽象类型，而非实体类型。
+
+---
+
+## 定义拦截器
+
+假设有一个叫做 `UserService` 的服务类，其 Java 方法 `getCurrentUserId()` 或 Kotlin 属性 `currentUserId` 返回当前登录用户的 id。
+
+拦截器需要实现 `org.babyfish.jimmer.sql.DraftInterceptor` 接口。
+
+### 示例代码
+
+```java
+@Component
+public class BaseEntityDraftInterceptor 
+implements DraftInterceptor<BaseEntity, BaseEntityDraft> {
+    
+    private final UserService userService;
+    
+    public BaseEntityDraftInterceptor(UserService userService) {
+        this.userService = userService;
+    }
+    
+    @Override
+    public void beforeSave(BaseEntityDraft draft, @Nullable BaseEntity original) {
+        // 修改时间：总是更新
+        if (!ImmutableObjects.isLoaded(draft, BaseEntityProps.MODIFIED_TIME)) {
+            draft.setModifiedTime(LocalDateTime.now());
+        }
+        
+        // 修改人：总是更新
+        if (!ImmutableObjects.isLoaded(draft, BaseEntityProps.EDITOR)) {
+            draft.applyModifiedBy(user -> {
+                user.setId(userService.getCurrentUserId());
+            });
+        }
+        
+        // 新增操作（original == null 表示 INSERT）
+        if (original == null) {
+            // 创建时间
+            if (!ImmutableObjects.isLoaded(draft, BaseEntityProps.CREATED_TIME)) {
+                draft.setCreatedTime(LocalDateTime.now());
+            }
+            
+            // 创建人
+            if (!ImmutableObjects.isLoaded(draft, BaseEntityProps.CREATOR)) {
+                draft.applyCreatedBy(user -> {
+                    user.setId(userService.getCurrentUserId());
+                });
+            }
+        }
+    }
+}
+```
+
+### 方法参数说明
+
+`beforeSave` 方法在某个对象被保存之前被调用，用户可以对即将保存的数据 `draft` 做出最后调整。
+
+| 参数 | 说明 |
+|------|------|
+| `draft` | 即将被保存的对象，你可以修改它 |
+| `original` | 如果非 null，则表示数据库中现有的数据，只可读取，不可修改 |
+
+**操作类型判断**：
+- `original == null`：INSERT 操作
+- `original != null`：UPDATE 操作
+
+> **注意**：请不要在 `beforeSave` 方法中修改被 `@Id` 或 `@Key` 修饰的属性。
+
+---
+
+## 控制 original 参数的格式
+
+上文谈到，如果当前操作为 UPDATE，`beforeSave` 方法的 `original` 参数非 null，表示数据库中的旧值。
+
+`original` 是 Jimmer 动态对象，默认情况下，只有 id 和 key 属性是已加载和可访问的。然而，是否能够控制 `original` 对象的格式让更多的属性可以被访问呢？
+
+### 使用 dependencies() 方法
+
+`DraftInterceptor` 接口提供了另外一个 `default` 方法 `dependencies`，返回一个属性集合，以表示除了 id 属性和 key 属性外，`original` 对象还有哪些属性需要被加载。
+
+```java
+@Component
+public class BaseEntityDraftInterceptor
+implements DraftInterceptor<BaseEntity, BaseEntityDraft> {
+    
+    @Override
+    public void beforeSave(
+        BaseEntityDraft draft,
+        @Nullable BaseEntity original
+    ) {
+        // ...implementation is omitted...
+    }
+    
+    @Override
+    public Collection<TypedProp<BaseEntity, ?>> dependencies() {
+        return Arrays.asList(
+            BaseEntityProps.CREATED_BY,
+            BaseEntityProps.MODIFIED_BY
+        );
+    }
+}
+```
+
+> **提示**：返回的属性集合无需包含 id 属性和 key 属性，因为它们总是被加载。
+
+---
+
+## 应用拦截器
+
+### 使用 Jimmer Spring Starter
+
+上文中，我们定义的类 `BaseEntityDraftInterceptor` 被 `@Component` 修饰，这是一个 Spring 托管对象。
+
+如果使用 Spring Boot Starter 且保证拦截器被 Spring 托管，那么 Jimmer 就会自动将它注册，**无需额外的配置**。
+
+### 不使用 Jimmer Spring Starter
+
+未使用 Spring Boot 时，将拦截器挂接到 `SqlClient` 对象上，即可生效：
+
+```java
+@Bean
+public JSqlClient sqlClient(
+    List<DraftInterceptor<?>> interceptors,
+    // ...省略其他参数...
+) {
+    return JSqlClient
+        .newBuilder()
+        .addDraftInterceptors(interceptors)
+        // ...省略其他配置...
+        .build();
+}
+```
+
+> **提示**：虽然在本文仅示范了一个 `DraftInterceptor`，实际项目中可能有很多个。所以，这里使用集合，让 Spring 注入所有的 `DraftInterceptor`。
+
+---
+
+## 最终使用
+
+假如 `Book` 继承了 `BaseEntity`，则可以这样使用：
+
+```java
+Book book = Immutables.createBook(draft -> {
+    draft.setName("SQL in Action");
+    draft.setEdition(1);
+    draft.setPrice(new BigDecimal("59"));
+    draft.applyStore(store -> store.setId(2L));
 });
 
-// SQL DSL
-BookTable table = BookTable.$;
-List<Book> books = sqlClient
-    .createQuery(table)
-    .where(table.storeId().isNull())
-    .orderBy(table.name())
-    .select(table)
-    .execute();
-
-// Fetcher
-Fetcher<Book> fetcher = BookFetcher.$
-    .allScalarFields()
-    .store(BookStoreFetcher.$.allScalarFields())
-    .authors(AuthorFetcher.$.allScalarFields());
+sqlClient.getEntities().save(book);
 ```
 
-### Kotlin 代码示例
+### 生成的 SQL
 
-```kotlin
-// Draft
-val book = Book {
-    name = "SQL in Action"
-    authors().addBy { name = "Jessica" }
-    authors().addBy { name = "Bob" }
-}
+**如果上面的保存指令最终导致了 INSERT 操作**，生成的 SQL 如下：
 
-// SQL DSL
-val books = sqlClient
-    .createQuery(Book::class) {
-        where(table.storeId.isNull())
-        orderBy(table.name)
-        select(table)
-    }
-    .execute()
-
-// Fetcher
-val fetcher = newFetcher(Book::class).by {
-    allScalarFields()
-    store { allScalarFields() }
-    authors { allScalarFields() }
-}
+```sql
+INSERT INTO BOOK(
+    CREATED_TIME, 
+    MODIFIED_TIME, 
+    CREATED_BY, 
+    MODIFIED_BY, 
+    NAME, 
+    EDITION, 
+    PRICE, 
+    STORE_ID
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 ```
 
-### 两种 Java 代码风格
+其中，为 `CREATED_TIME`、`MODIFIED_TIME`、`CREATED_BY` 和 `MODIFIED_BY` 赋值的行为由**拦截器自动添加**。
 
-考虑到部分 Java 开发人员对 `$` 存在主观偏见，Jimmer 的 APT 还生成 4 个汇总类型：
+**如果上面的保存指令最终导致了 UPDATE 操作**，生成的 SQL 如下：
 
-| 汇总类型 | 说明 |
-|----------|------|
-| `Objects` 类 | 创建 Draft 的另一种方式 |
-| `Tables` 接口 | SQL DSL 表定义 |
-| `TableExes` 接口 | 扩展表定义 |
-| `Fetchers` 接口 | Fetcher 定义 |
-
-#### 风格对比
-
-| 接受 `$` 的风格 | 不接受 `$` 的风格 |
-|-----------------|-------------------|
-| `BookDraft.$.produce` | `Immutables.createBook` |
-| `BookTable.$` | `Tables.BOOK_TABLE` |
-| `BookTableEx.$` | `TableExes.BOOK_TABLE_EX` |
-| `BookFetcher.$` | `Fetchers.BOOK_FETCHER` |
-
-#### 使用接口简化代码
-
-```java
-public interface FetcherConstants implements Fetchers {
-    Fetcher<Book> BOOK_DETAIL_FETCHER = BOOK_FETCHER
-        .allScalarFields()
-        .store(BOOK_STORE_FETCHER.allScalarFields())
-        .authors(AUTHOR_FETCHER.allScalarFields());
-}
+```sql
+UPDATE BOOK SET 
+    MODIFIED_TIME = ?, 
+    MODIFIED_BY = ?, 
+    PRICE = ?, 
+    STORE_ID = ? 
+WHERE ID = ?
 ```
 
----
-
-## 与 Lombok 配合
-
-Java 项目常常和 Lombok 配合使用。
-
-### 默认情况
-
-如果项目除了 Lombok 外没有其他 APT，只需导入 Lombok 的依赖即可。
-
-### 引入其他 APT 时
-
-一旦引入了其他 APT 配置（不一定是 Jimmer 的 APT，任何其他 APT），则**必须明确配置 Lombok 的 APT**。
-
-#### Maven 配置
-
-```xml
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.10.1</version>
-            <configuration>
-                <annotationProcessorPaths>
-                    <!-- 注意顺序：Lombok 在最前面 -->
-                    <path>
-                        <groupId>org.projectlombok</groupId>
-                        <artifactId>lombok</artifactId>
-                        <version>${lombok.version}</version>
-                    </path>
-                    <path>
-                        <groupId>org.babyfish.jimmer</groupId>
-                        <artifactId>jimmer-apt</artifactId>
-                        <version>${jimmer.version}</version>
-                    </path>
-                </annotationProcessorPaths>
-            </configuration>
-        </plugin>
-    </plugins>
-</build>
-```
-
-#### Gradle 配置
-
-```groovy
-dependencies {
-    annotationProcessor 'org.projectlombok:lombok:${lombokVersion}'
-    annotationProcessor 'org.babyfish.jimmer:jimmer-apt:${jimmerVersion}'
-}
-```
-
-**注意**：Gradle 不需要像 Maven 那样特别指定顺序。
-
----
-
-## 常见问题
-
-### Q: 为什么打开项目后看不到自动生成的代码？
-
-**A**: 使用 IntelliJ IDEA 打开 Jimmer 项目时，可能会发现自动生成的代码不存在。解决方法：
-
-**方法一**：先用命令行编译
-```bash
-# Maven
-./mvnw install
-
-# Gradle
-./gradlew build
-```
-然后再用 IntelliJ 打开项目。
-
-**方法二**：直接用 IntelliJ 打开，暂时无视 IDE 的错误，等待依赖下载完毕后，直接运行项目的 main 方法或单元测试。所有 IDE 错误将会自动消失。
-
-### Q: Kotlin 为什么只能用 Gradle？
-
-**A**: KSP 官方只支持 Gradle。虽然第三方提供了 KSP 的 Maven 插件，但版本迭代跟不上 Kotlin/KSP 本身的更新，经常遇到兼容性问题。因此 Jimmer 放弃了对 Kotlin 的 Maven 支持，请 Kotlin 开发者使用 Gradle。
-
-### Q: Java 项目应该选择 Maven 还是 Gradle？
-
-**A**: Jimmer 官方例子中的 Java 项目同时提供了 `pom.xml` 和 `build.gradle`，即 Maven/Gradle 双支持。可以根据团队习惯选择。
-
-但 IntelliJ 对 Maven 引入的 annotation processor 的整合存在一些过度优化措施，导致 Gradle 和 IDE 配合的开发体验优于 Maven。
-
-### Q: APT 和 KSP 有什么区别？
-
-**A**: 
-
-| 对比项 | APT | KSP |
-|--------|-----|-----|
-| 语言 | Java | Kotlin |
-| 官方支持 | Java 标准 | Kotlin 官方 |
-| 构建工具 | Maven/Gradle | 仅 Gradle |
-| 速度 | 标准 | 更快（KSP 设计更高效） |
-
-Jimmer 为 Java 用户提供 APT 支持，为 Kotlin 用户提供 KSP 支持。
+其中，为 `MODIFIED_TIME` 和 `MODIFIED_BY` 赋值的行为由**拦截器自动添加**。
 
 ---
 
 ## 参考
 
-- [Jimmer 官方文档 - APT/KSP](https://jimmer.deno.dev/zh/docs/overview/apt-ksp)
-- [IntelliJ IDEA - Annotation Processors](https://www.jetbrains.com/help/idea/annotation-processors-support.html)
-- [Kotlin - KSP Overview](https://kotlinlang.org/docs/ksp-overview.html)
+- [Jimmer 官方文档 - 保存前拦截器](https://jimmer.deno.dev/zh/docs/mutation/draft-interceptor)
+- [保存指令文档](./save-command.md)
+- [官方示例代码](https://github.com/babyfish-ct/jimmer-examples)
