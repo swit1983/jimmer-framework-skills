@@ -1,0 +1,410 @@
+---
+title: '用法'
+---
+# 用法
+
+
+## Jimmer分页的特色
+
+
+分页查询是Jimmer一个很有特色的功能，能大幅提升开发效率。
+
+
+分页需要执行两条SQL查询
+
+
+- 查询满足条件的数据总行数，其结果可以计算一共有多少页，用户的页码是否越界。
+
+
+信息
+
+为了便于讨论，Jimmer称这条SQL为`count-query`
+- 查询当前页内的所有数据，返回的数据条数不超过页面大小，并跳过之前页的所有数据。
+
+
+信息
+
+为了便于讨论，Jimmer称这条SQL为`data-query`
+
+提示
+
+Jimmer分页的特色：开发人员只需编写`data-query`，框架自动生成`count-query`。
+
+
+Jimmer不但可以自动生成`count-query`，还可以做到优化`count-query`。这个优化会在[下一篇文章](query/paging/unnecessary-join)中讨论。
+
+
+## 配合Spring Data使用时
+
+
+配合SpringBoot使用时，开发人员从`JRepository/KRepository`派生自定义的Repository接口，为自定义接口添加查询方法有两种选择：
+
+
+- 按照一定的约定声明抽象方法，交由Jimmer自动实现
+
+
+警告
+
+这种用法过于简单，隐藏了所有细节，不适在此讲述分页查询。
+
+
+你可以查看[Spring篇/SpringData风格/抽象方法](spring/repository/abstract)以了解如何通过这种方式实现分页查询
+- 直接在自定义接口中定义default方法，自己实现查询逻辑
+
+
+- Java
+- Kotlin
+BookRepository.java
+
+```
+import org.springframework.data.domain.Page;import org.springframework.data.domain.Pageable;org.babyfish.jimmer.spring.repository.support.SpringPageFactory;...省略其他导入...public interface BookRepository<Book, Long> extends JRepository<Book, Long> {    BookTable table = Tables.BOOK_TABLE;    default Page<Book> findBooks(        Pageable pageable,        @Nullable String name,        @Nullable String storeName    ) {        return             sql()                .createQuery(table)                .whereIf(                    name != null && !name.isEmpty(),                    table.name().eq(name)                )                .whereIf(                    storeName != null && !storeName.isEmpty(),                    table.store().name().eq(storeName)                )                .orderBy(SpringOrders.toOrders(table, pageable.getSort()))  ❶                .select(table)                .fetchPage( ❷                    pageable.getPageNumber(),                     pageable.getPageSize()                    SpringPageFactory.getInstance()                );    }}
+```
+
+BookRepository.kt
+
+```
+import org.springframework.data.domain.Pageimport org.springframework.data.domain.Pageable...省略其他导入...interface BookRepository<Book, Long> : KRepository<Book, Long> {    fun findBooks(        pageable: Pageable,        name: String? = null,        storeName: String? = null    ): Page<Book> =        sql            .createQuery(Book::class) {                name?.takeIf { it.isNotEmpty() }?.let {                    where(table.name eq it)                }                storeName?.takeIf { it.isNotEmpty() }?.let {                    where(table.store.name eq it)                }                orderBy(pageable.sort) ❶                select(table)            }            .fetchSpringPage(pageable) ❷}
+```
+
+
+- ❶ 由于Spring Data的`Pageable`包含了动态排序，所以需要应用动态排序。
+- ❷ 分页查询，返回`org.springframework.data.domain.Page<Book>`类型的对象
+
+
+> Jimmer分页可以使用任何`Page`对象，无论是Spring Data的`Page`，还是Jimmer自身的`Page`，甚至第三方定义的`Page`。
+>
+>
+>
+>
+> 这里，Java代码采用`SpringPageFactory.getInstance()`要求当前分页操作返回Spring Data的`Page`。
+>
+>
+>
+>
+> 事实上，Kotlin代码也可以使用`SpringPageFactory.getInstance()`来时想通目的，但是，kotlin下有更便捷的扩展方法`fetchSpringPage`。
+
+
+如果我们执行
+
+
+```
+Page<Boo> page = bookRepository.findBooks(    PageRequest.of(        1,         5,         SortUtils.toSort("name asc, edition desc")    ),    null,    null)
+```
+
+
+警告
+
+SpringData中`Pageable`的页码从0开始，而非从1开始，所以，这里查询的是第二页
+
+
+会生成两条SQL
+
+
+- count-query
+
+
+```
+select    count(tb_1_.ID)from BOOK tb_1_
+```
+- data-query *（假设数据库是H2）*
+
+
+```
+select    tb_1_.ID,    tb_1_.CREATED_TIME,    tb_1_.MODIFIED_TIME,    tb_1_.NAME,    tb_1_.EDITION,    tb_1_.PRICE,    tb_1_.STORE_IDfrom BOOK tb_1_order by    tb_1_.NAME asc,    tb_1_.EDITION desclimit ? /* 5 */ offset ? /* 5 */
+```
+
+
+这个例子可以让我们明白Jimmer分页功能，但是，Jimmer的Spring API隐藏了一些细节。因此，接下来，我们绕开Spring Data，从更底层的角度更清晰地阐述。
+
+
+## 不配合Spring Data使用时
+
+
+### Jimmer的Page对象
+
+
+既然不使用Spring Data，那么自然无法使用`org.springframework.data.domain.Page<T>`。
+
+
+为此，Jimmer定义了`org.babyfish.jimmer.Page<T>`类型，定义如下
+
+
+Page.java
+
+```
+package org.babyfish.jimmer;public class Page<T> {    private final List<T> rows;    private final int totalRowCount;    private final int totalPageCount;    ...省略其他字段...}
+```
+
+
+可以看出，Jimmer自身的`Page<T>`比Spring Data的`Page<T>`简单得多，二者区别如下
+
+
+信息
+- `org.springframework.data.domain.Page<T>`为服务端页面而设计，为了让页面在刷新后仍然能保持之前的状态，大量的信息 *(比如繁琐的排序信息)* 需要被原样返回给客户端，所以非常复杂。
+- `org.babyfish.jimmer.Page<T>`为前后端独立页面的设计，这种客户端页面自身是一个有状态应用，服务端提供纯数据服务即可，仅返回最必要的信息即可，所以非常简单。
+
+
+### 实现业务代码
+
+
+- Java
+- Kotlin
+Page.java
+
+```
+public Page<Book> findBooks(    int pageIndex,    int pageSize,    @Nullable String name,    @Nullable String storeName    // such as "price desc, name asc"    @Nullable String orderCode) {    return sqlClient            .createQuery(table)            .whereIf(                name != null && !name.isEmpty(),                table.name().eq(name)            )            .whereIf(                storeName != null && !storeName.isEmpty(),                table.store().name().eq(storeName)            )            .orderBy(Order.makeOrders(table, orderCode))            .select(table)            .fetchPage();}
+```
+
+
+```
+fun findBooks(    pageIndex: Int,    pageSize: Int,    name: String? = null,    storeName: String? = null,        // such as "price desc, name asc"    orderCode: String? = null): Page<Book> =    sql        .createQuery(Book::class) {            name?.takeIf { it.isNotEmpty() }?.let {                where(table.name eq it)            }            storeName?.takeIf { it.isNotEmpty() }?.let {                where(table.store.name eq it)            }            orderBy(table.makeOrders(orderCode))            select(table)        }        .fetchPage()
+```
+
+
+最终生成的SQL和前面讨论过的那个给予Spring Data的例子相同，这里不再赘述。
+
+
+## 内部机制
+
+
+在上面的例子中，我们讨论了Java和Kotlin的语言差异，以及是否使用SpringData 的各种情况。
+
+
+这些行为的底层逻辑是一样的，仅以Java为例
+
+
+```
+BookTable table = Tables.BOOK_TABLE;ConfigurableRootQuery<Book> query = ❶    sqlClient        .createQuery(table)        .whereIf(            name != null && !name.isEmpty(),            table.name().eq(name)        )        .whereIf(            storeName != null && !storeName.isEmpty(),            table.store().name().eq(storeName)        )        .orderBy(table.name().asc(), table.edition().desc)int totalCount = query.fetchUnlimitedCount(); ❷int totalPage = (totalCount + pageSize - 1) / pageSize;if (pageIndex >= totalPage) {    return new Page<Book>(totalCount, totalPage, Collections.emptyList());}List<Book> entities = query    .limit(pageSize, pageIndex * pageSize) ❸    .execute(); ❹return new Page( ❺    entities,    totalCount,    totalPage)
+```
+
+
+警告
+
+为了简化讨论，这段伪码并未考虑[反排序优化](query/paging/reverse-sorting)
+
+
+- ❶ 创建查询，但并不执行。我可以称其为样板查询
+- ❷ 在不修改原样板查询的基础上，生成`count-query`，再执行`count-query`得到分页前所有数据的行数
+
+
+这里的`fetchUnlimitedCount`方法是快捷API，其底层逻辑为
+
+
+```
+public interface ConfigurableRootQuery<T extends Table<?>, R> extends ... {    default int fetchUnlimitedCount() {        return count(null);    }    default int fetchUnlimitedCount(Connection con) {        return reselect((q, t) -> q.select(t.count()))            .withoutSortingAndPaging()            .execute(con)            .get(0)            .intValue();    }}
+```
+
+
+- `reselect((q, t) -> q.select(t.count()))`: `count-query`并不查询数据，而是查询COUNT
+- `withoutSortingAndPaging()`: `count-query`无需排序子句`order by`和分页子句 *(比如H2的`limit ? offset ?`)*
+
+提示
+
+Jimmer不但能自动生成`count-query`，还能自动优化`count-query`，请参见[表连接优化](query/paging/unnecessary-join)
+- ❸ `limit(limit, offset)`: 在不修改原样板查询的基础上，生成真正的`data-query`，带上分页限制。
+- ❹ 执行❸生成的`data-query`，得到一页内的数据
+- ❺ 将❷和❹取得的数据组合成page对象并返回
+
+
+## 方言
+
+
+本节讨论不同数据库下带分页范围限制的`data-query`的SQL实现
+
+
+考虑如下单页内数据查询
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = query    .limit(/*limit*/ 10, /*offset*/ 90)    .execute();
+```
+
+
+```
+val books = query    .limit(limit = 10, offset = 90)    .execute()
+```
+
+
+这里`limit(limit, offset)`设置分页区间。
+
+
+不同的数据库对分页查询的支持大相径庭。所以，在创建SqlClient时需要指定方言
+
+
+- SpringBoot的配置方法
+
+
+在`application.properties`或`application.yml`中添加一个配置，名为`jimmer.dialect`，值为Jimmer提供的方言类的类名:
+
+
+```
+jimmer:    dialect: org.babyfish.jimmer.sql.dialect.H2Dialect
+```
+- 非SpringBoot的配置方法
+
+
+- Java
+- Kotlin
+
+
+```
+JSqlClient sqlClient = JSqlClient    .newBuilder()    .setDialect(new H2Dialect())    ...省略其他代码...    .build();
+```
+
+
+```
+val sqlClient = newKSqlClient {    setDialect(H2Dialect())    ...省略其他代码...}
+```
+
+
+不同的方言，会用不同的SQL实现`limit`查询
+
+
+### 默认行为
+
+
+信息
+
+默认行为包含含DefaultDialect、H2Dialect和PostgresDialect
+
+
+```
+select     tb_1_.ID,     tb_1_.NAME,     tb_1_.EDITION,     tb_1_.PRICE,     tb_1_.STORE_IDfrom BOOK as tb_1_ left join BOOK_STORE as tb_2_     on tb_1_.STORE_ID = tb_2_.ID where tb_1_.PRICE between ? and ? order by tb_2_.NAME asc, tb_1_.NAME asc limit ? offset ?
+```
+
+
+### MySqlDialect
+
+
+```
+select     tb_1_.ID,     tb_1_.NAME,     tb_1_.EDITION,     tb_1_.PRICE,     tb_1_.STORE_IDfrom BOOK as tb_1_ left join BOOK_STORE as tb_2_     on tb_1_.STORE_ID = tb_2_.ID where tb_1_.PRICE between ? and ? order by tb_2_.NAME asc, tb_1_.NAME asc limit ?, ?
+```
+
+
+### OracleDialect
+
+
+1. 当offset不为0时
+
+
+```
+select * from (    select core__.*, rownum rn__     from (        select             tb_1_.ID,             tb_1_.NAME,             tb_1_.EDITION,             tb_1_.PRICE,             tb_1_.STORE_ID        from BOOK as tb_1_         left join BOOK_STORE as tb_2_             on tb_1_.STORE_ID = tb_2_.ID         where tb_1_.PRICE between ? and ?         order by tb_2_.NAME asc, tb_1_.NAME asc     ) core__ where rownum <= ? ❶) limited__ where rn__ > ? ❷
+```
+
+
+其中，`❶`处变量为`limit + offset`，`❷`处变量为`offset`
+2. 当offset为0时
+
+
+```
+select core__.* from (    select         tb_1_.ID,         tb_1_.NAME,         tb_1_.EDITION,         tb_1_.PRICE,         tb_1_.STORE_ID    from BOOK as tb_1_     left join BOOK_STORE as tb_2_         on tb_1_.STORE_ID = tb_2_.ID     where tb_1_.PRICE between ? and ?     order by tb_2_.NAME asc, tb_1_.NAME asc ) core__ where rownum <= ? ❶
+```
+
+
+其中，❶处变量为`limit`
+
+
+## 和对象抓取器配合
+
+
+对象抓取器中定义被查询对象的形状，让被查询对象可以附带更多关联对象。此功能可以和分页一起使用。
+
+
+信息
+
+Jimmer在分页查询完成后启动对其他关联度对象的查询，只针对单页之内的对象。
+
+
+以SpringBoot模式为例，现在，让我们修改之前讨论过的`BookRepository`，让其支持对象抓取器
+
+
+- Java
+- Kotlin
+BookRepository.java
+
+```
+import org.springframework.data.domain.Page;import org.springframework.data.domain.Pageable;...省略其他导入...public interface BookRepository<Book, Long> extends JRepository<Book, Long> {    BookTable table = Tables.BOOK_TABLE;    default Page<Book> findBooks(        Pageable pageable,        @Nullable Fetch<Book> fetcher,        @Nullable String name,        @Nullable String storeName    ) {        return sql()            .createQuery(table)            .whereIf(                name != null && !name.isEmpty(),                table.name().eq(name)            )            .whereIf(                storeName != null && !storeName.isEmpty(),                table.store().name().eq(storeName)            )            .orderBy(SpringOrders.toOrders(table, pageable.getSort()))            .select(                table.fetch(fetcher)            )            .fetchPage(                pageable.getPageNumber(),                 pageable.getPageSize(),                SpringPageFactory.getInstance()            )    }}
+```
+
+BookRepository.kt
+
+```
+import org.springframework.data.domain.Pageimport org.springframework.data.domain.Pageable...省略其他导入...interface BookRepository<Book, Long> : KRepository<Book, Long> {    fun findBooks(        pageable: Pageable,        fetcher: Fetcher<Book>? = null,        name: String? = null,        storeName: String? = null    ): Page<Book> =        sql            .createQuery(Book::class) {                name?.takeIf { it.isNotEmpty() }?.let {                    where(table.name eq it)                }                storeName?.takeIf { it.isNotEmpty() }?.let {                    where(table.store.name eq it)                }                orderBy(pageable.sort)                select(                    table.fetch(fetcher)                )            }            .fetchSpringPage(pageable)}
+```
+
+
+如果按如下代码调用它
+
+
+- Java
+- Kotlin
+Page.java
+
+```
+Page<Book> page = bookRepository.findBooks(    PageRequest.of(        1,        5,        SortUtils.toSort("name asc, edition desc")    ),    Fetchers.BOOK_FETCHER        .allScalarFields()        .store(            Fetchers.BOOK_STORE_FETCHER                .allScalarFields()        )        .authors(            Fetchers.AUTHOR_FETCHER                .allScalarFields()        ),    null,    null);
+```
+
+Page.kt
+
+```
+val page = bookRepository.findBooks(    PageRequest.of(        1,        5,        SortUtils.toSort("name asc, edition desc")    ),    newFetcher(Book::class).by {        allScalarFields()        store {            allScalarFields()        }        authors {            allScalarFields()        }    })
+```
+
+
+会生成如下4条SQL
+
+
+- count-query
+
+
+```
+select    count(tb_1_.ID)from BOOK tb_1_
+```
+- data-query *（假设数据库是H2）*
+
+
+```
+select    tb_1_.ID,    tb_1_.CREATED_TIME,    tb_1_.MODIFIED_TIME,    tb_1_.NAME,    tb_1_.EDITION,    tb_1_.PRICE,    tb_1_.STORE_IDfrom BOOK tb_1_order by    tb_1_.NAME asc,    tb_1_.EDITION desclimit ? /* 5 */, ? /* 5 */
+```
+- 为分页后的5个对象查询多对一关联`Book.store`
+
+
+```
+select    tb_1_.ID,    tb_1_.NAMEfrom BOOK_STORE tb_1_where    tb_1_.ID in (        ? /* 2 */, ? /* 1 */    )
+```
+
+
+信息
+
+虽然分页后的对象有5个，但是它们的外键`STORE_ID`只有两个取值
+- 为分页后的5个对象查询多对多关联`Book.authors`
+
+
+```
+select    tb_2_.BOOK_ID,    tb_1_.ID,    tb_1_.FIRST_NAME,    tb_1_.LAST_NAMEfrom AUTHOR tb_1_inner join BOOK_AUTHOR_MAPPING tb_2_    on tb_1_.ID = tb_2_.AUTHOR_IDwhere    tb_2_.BOOK_ID in (        ? /* 10 */, ? /* 3 */, ? /* 2 */,         ? /* 1 */, ? /* 9 */    )
+```
+
+
+最终，在所得的分页中，每一个都是符合对象抓取器的数据结构。
+
+
+```
+{    "content":[ // 当前页        {            "id":12,            "name":"GraphQL in Action",            "edition":3,            "price":80,            "store":{                "id":2,                "name":"MANNING",                "website":null            },            "authors":[                {                    "id":5,                    "firstName":"Samer",                    "lastName":"Buna",                    "gender":"MALE"                }            ]        },        {            "id":11,            "name":"GraphQL in Action",            "edition":2,            "price":81,            "store":{                "id":2,                "name":"MANNING",                "website":null            },            "authors":[                {                    "id":5,                    "firstName":"Samer",                    "lastName":"Buna",                    "gender":"MALE"                }            ]        },        {            "id":10,            "name":"GraphQL in Action",            "edition":1,            "price":82,            "store":{                "id":2,                "name":"MANNING",                "website":null            },            "authors":[                {                    "id":5,                    "firstName":"Samer",                    "lastName":"Buna",                    "gender":"MALE"                }            ]        },        {            "id":3,            "name":"Learning GraphQL",            "edition":3,            "price":51,            "store":{                "id":1,                "name":"O'REILLY",                "website":null            },            "authors":[                {                    "id":2,                    "firstName":"Alex",                    "lastName":"Banks",                    "gender":"MALE"                },                {                    "id":1,                    "firstName":"Eve",                    "lastName":"Procello",                    "gender":"FEMALE"                }            ]        },        {            "id":2,            "name":"Learning GraphQL",            "edition":2,            "price":55,            "store":{                "id":1,                "name":"O'REILLY",                "website":null            },            "authors":[                {                    "id":2,                    "firstName":"Alex",                    "lastName":"Banks",                    "gender":"MALE"                },                {                    "id":1,                    "firstName":"Eve",                    "lastName":"Procello",                    "gender":"FEMALE"                }            ]        }    ],    "totalPages":3, // 共3页    "totalElements":12, // 分页前共12条数据    ...Spring Data的Page对象属性太多，忽略...}
+```
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/query/paging/usage.mdx)最后 于 **2025年9月16日**  更新
+- [Jimmer分页的特色](#jimmer分页的特色)
+- [配合Spring Data使用时](#配合spring-data使用时)
+- [不配合Spring Data使用时](#不配合spring-data使用时)
+- [Jimmer的Page对象](#jimmer的page对象)
+- [实现业务代码](#实现业务代码)
+- [内部机制](#内部机制)
+- [方言](#方言)
+- [默认行为](#默认行为)
+- [MySqlDialect](#mysqldialect)
+- [OracleDialect](#oracledialect)
+- [和对象抓取器配合](#和对象抓取器配合)

@@ -1,172 +1,183 @@
 # 缓存概述
 
-Jimmer 提供三级缓存体系，自动维护缓存一致性。
+Jimmer 提供三级缓存体系，数据修改时自动删除受影响的缓存，并由触发器驱动保证缓存清理最终成功。
 
 ## 三级缓存架构
 
 ```
 ┌─────────────────────────────────────────┐
-│           计算缓存 (Computed Cache)        │
-│         @Transient 计算属性缓存            │
+│           计算缓存 (Resolver Cache)        │
+│   createResolverCache(prop)               │
+│   ID → 复杂计算属性(@Transient)的计算值     │
 └─────────────────────────────────────────┘
                    ↑
 ┌─────────────────────────────────────────┐
 │           关联缓存 (Association Cache)     │
-│      多对一/一对多/多对多关联集合缓存        │
+│   createAssociatedIdCache(prop)           │
+│   createAssociatedIdListCache(prop)       │
+│   ID → 关联对象ID(或ID集合)                │
 └─────────────────────────────────────────┘
                    ↑
 ┌─────────────────────────────────────────┐
 │           对象缓存 (Object Cache)          │
-│        实体对象缓存 (ID -> Entity)          │
+│   createObjectCache(type)                 │
+│   ID → 实体对象                            │
 └─────────────────────────────────────────┘
 ```
 
-| 缓存级别 | 用途 | 键 | 值 |
-|---------|------|-----|-----|
-| 对象缓存 | 缓存实体对象 | 表名 + ID | 实体对象 |
-| 关联缓存 | 缓存关联关系 | 源表名 + 源ID + 关联属性名 | 目标ID列表 |
-| 计算缓存 | 缓存计算属性 | 表名 + ID + 属性名 | 计算结果 |
+| 缓存级别 | CacheFactory 方法 | 键 | 值 |
+|---------|-------------------|-----|-----|
+| 对象缓存 | `createObjectCache(type)` | 类型名 + ID | 实体对象 |
+| 关联缓存 | `createAssociatedIdCache(prop)` / `createAssociatedIdListCache(prop)` | 属性名 + 源ID | 关联目标ID(或集合) |
+| 计算缓存 | `createResolverCache(prop)` | 属性名 + ID | 计算结果 |
 
 ## 启用缓存
 
-### 1. 添加依赖
+### CacheFactory 接口
 
-```xml
-<dependency>
-    <groupId>org.babyfish.jimmer</groupId>
-    <artifactId>jimmer-spring-boot-starter</artifactId>
-    <version>0.8.0</version>
-</dependency>
-
-<!-- 选择缓存实现：Caffeine（本地）或 Redis（分布式） -->
-<dependency>
-    <groupId>com.github.ben-manes.caffeine</groupId>
-    <artifactId>caffeine</artifactId>
-</dependency>
-```
-
-### 2. 配置缓存
+实现 `CacheFactory`(Java) 或 `KCacheFactory`(Kotlin) 接口：
 
 ```java
-@Configuration
-public class CacheConfig {
-    
-    // 本地缓存（单机）
-    @Bean
-    public CacheFactory cacheFactory() {
-        return new CaffeineBinder(
-            1024,  // 对象缓存最大数量
-            Duration.ofMinutes(10)  // 过期时间
-        );
-    }
-    
-    // 分布式缓存（集群）
-    @Bean
-    public CacheFactory redisCacheFactory(RedisTemplate<String, byte[]> redisTemplate) {
-        return new RedisCacheBinder(redisTemplate);
-    }
+public interface CacheFactory {
+    @Nullable
+    default Cache<?, ?> createObjectCache(@NotNull ImmutableType type) { return null; }
+    @Nullable
+    default Cache<?, ?> createAssociatedIdCache(@NotNull ImmutableProp prop) { return null; }
+    @Nullable
+    default Cache<?, List<?>> createAssociatedIdListCache(@NotNull ImmutableProp prop) { return null; }
+    @Nullable
+    default Cache<?, ?> createResolverCache(@NotNull ImmutableProp prop) { return null; }
 }
 ```
 
-### 3. 在实体中启用缓存
+- 返回 `null` → 不启用该缓存
+- 返回 `Cache` → 启用该缓存
+
+### 多级缓存架构
+
+使用 `ChainCacheBuilder` 构建多级缓存（通常两级：Caffeine 本地 + Redis 远程）：
 
 ```java
-@Entity
-public interface Book {
-    
-    @Id
-    long id();
-    
-    String name();
-    
-    BigDecimal price();
-    
-    // 多对一关联自动使用关联缓存
-    @ManyToOne
-    @JoinColumn(name = "STORE_ID")
-    BookStore store();
-    
-    // 多对多关联自动使用关联缓存
-    @ManyToMany
-    List<Author> authors();
+@Bean
+public CacheFactory cacheFactory(
+        RedisConnectionFactory connectionFactory,
+        ObjectMapper objectMapper
+) {
+    return new CacheFactory() {
+        @Override
+        public Cache<?, ?> createObjectCache(@NotNull ImmutableType type) {
+            return new ChainCacheBuilder<>()
+                    .add(CaffeineValueBinder
+                            .forObject(type)
+                            .maximumSize(1024)
+                            .duration(Duration.ofHours(1))
+                            .build())
+                    .add(RedisValueBinder
+                            .forObject(type)
+                            .redis(connectionFactory)
+                            .objectMapper(objectMapper)
+                            .duration(Duration.ofHours(24))
+                            .build())
+                    .build();
+        }
+
+        @Override
+        public Cache<?, ?> createAssociatedIdCache(@NotNull ImmutableProp prop) {
+            return createPropCache(prop, Duration.ofMinutes(10), Duration.ofHours(10));
+        }
+
+        @Override
+        public Cache<?, List<?>> createAssociatedIdListCache(@NotNull ImmutableProp prop) {
+            return createPropCache(prop, Duration.ofMinutes(5), Duration.ofHours(5));
+        }
+
+        @Override
+        public Cache<?, ?> createResolverCache(@NotNull ImmutableProp prop) {
+            return createPropCache(prop, Duration.ofHours(1), Duration.ofHours(24));
+        }
+
+        private <K, V> Cache<K, V> createPropCache(
+                ImmutableProp prop,
+                Duration caffeineDuration,
+                Duration redisDuration
+        ) {
+            return new ChainCacheBuilder<>()
+                    .add(CaffeineValueBinder
+                            .forProp(prop)
+                            .maximumSize(512)
+                            .duration(caffeineDuration)
+                            .build())
+                    .add(RedisValueBinder
+                            .forProp(prop)
+                            .redis(connectionFactory)
+                            .objectMapper(objectMapper)
+                            .duration(redisDuration)
+                            .build())
+                    .build();
+        }
+    };
 }
+```
+
+### Binder 类型
+
+| Jimmer内置适配类 | 实现接口 | 支持多视图缓存 |
+| --- | --- | --- |
+| `CaffeineBinder` | `LoadingBinder` | 否 |
+| `RedisValueBinder` | `SimpleBinder` | 否 |
+| `RedisHashBinder` | `SimpleBinder.Parameterized` | 是 |
+
+- `LoadingBinder`: 适配具备自动加载能力的缓存（如 Caffeine）
+- `SimpleBinder`: 适配不具备自动加载能力的缓存（如 Redis）
+- `SimpleBinder.Parameterized`: 用于多视图缓存
+
+### 注册 CacheFactory
+
+**SpringBoot**: 让 `CacheFactory` 受 Spring 托管（`@Bean`）即可。
+
+**底层API**:
+
+```java
+JSqlClient sqlClient = JSqlClient.newBuilder()
+        .setCacheFactory(new CacheFactory() { ... })
+        .build();
 ```
 
 ## 缓存一致性
 
-Jimmer 自动维护缓存一致性：
+Jimmer 的缓存一致性由[触发器](../../mutation/trigger)驱动，分两种：
 
-```java
-// 修改数据
-Book book = BookDraft.$.produce(draft -> {
-    draft.setId(1L);
-    draft.setName("New Name");  // 修改 name
-});
+### BinLog 触发器（推荐）
 
-sqlClient.save(book);
-// 自动失效：Book-1 的对象缓存
-// 自动失效：所有包含 Book-1 的关联缓存
-```
+`trigger-type` 为 `BINLOG_ONLY` 或 `BOTH` 时使用。
 
-### 缓存失效传播
+- 开发人员响应消息队列通知，调用 Jimmer 的 `BinLog` API
+- 以 Kafka 为例：调用 `BinLog` API 成功后才提交消费进度 → 缓存清理最终成功
+- **任何方式修改数据库（包括直接 SQL）都能自动维护缓存一致性**
 
-```
-修改 Book-1 的 name:
-    ↓
-失效 Book-1 的对象缓存
-    ↓
-查找所有与 Book 关联的实体:
-    - Author 通过 books 关联 Book
-    - BookStore 通过 books 关联 Book
-    ↓
-失效所有相关关联缓存:
-    - Author.books 中包含 Book-1 的条目
-    - BookStore.books 中包含 Book-1 的条目
-```
+### Transaction 触发器
 
-## 多视角缓存（高级）
+`trigger-type` 为 `TRANSACTION_ONLY` 时使用。
 
-不同用户看到不同的缓存视图：
+- 只有通过 Jimmer API 修改数据库才会触发
+- 缓存删除操作被延迟存入 `JIMMER_TRANS_CACHE_OPERATOR` 表（与业务表同事务）
+- 事务提交后立即执行 `Flush` 操作，周期重试保证最终成功
+- 间隔由 `jimmer.transaction-cache-operator-fixed-delay` 配置（毫秒），默认 `5000`
+- **注意**：不要使用 `DefaultDialect`，需明确指定数据库方言
 
-```java
-// 用户 A 的查询（只能看到 public 数据）
-sqlClient
-    .createQuery(table)
-    .forUser("user-a")  // 多视角缓存标识
-    .where(table.visibility().eq("public"))
-    .select(table)
-    .execute();
+## 多视图缓存（高级）
 
-// 用户 B 的查询（能看到 public + 自己的 private 数据）
-sqlClient
-    .createQuery(table)
-    .forUser("user-b")
-    .where(
-        table.visibility().eq("public")
-            .or(table.ownerId().eq("user-b"))
-    )
-    .select(table)
-    .execute();
-```
+不同客户端看到不同的缓存数据（通常由权限系统/全局过滤器导致）。
 
-## 监控与调优
+- 关联缓存和计算缓存可以多视图化，对象缓存不行
+- 必须实现 `CacheableFilter` 接口（而非普通 `Filter`）
+- SubKey 是 `SortedMap<String, Object>` 经 JSON 序列化后的字符串
+- 详见 [多视图缓存文档](../../cache/multiview-cache/concept)
 
-```java
-// 缓存统计
-CacheManager cacheManager = ...;
-Cache cache = cacheManager.getCache("Book");
+## 各级缓存详情
 
-System.out.println("命中次数: " + cache.getHitCount());
-System.out.println("未命中次数: " + cache.getMissCount());
-System.out.println("命中率: " + cache.getHitRate());
-```
-
-## 注意事项
-
-| 注意点 | 建议 |
-|--------|------|
-| 缓存粒度 | 对象缓存粒度最细，但缓存数量多；需合理设置上限 |
-| 过期策略 | 建议设置合理的 TTL，避免内存溢出 |
-| 序列化 | 使用分布式缓存时，确保实体可序列化 |
-| 缓存穿透 | 对不存在的数据做空值缓存 |
-| 缓存雪崩 | 设置随机过期时间，避免同时失效 |
+| 缓存类型 | 说明 | 详情文档 |
+|---------|------|---------|
+| 对象缓存 | ID → 实体对象 | [object-cache.md](object-cache.md) |
+| 关联缓存 | ID → 关联对象ID(集合) | [association-cache.md](association-cache.md) |
+| 计算缓存 | ID → @Transient 计算值 | 见 docs/cache/cache-type/calculation.md |

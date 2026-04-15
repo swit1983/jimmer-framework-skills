@@ -1,0 +1,109 @@
+---
+title: '可空性'
+---
+# 可空性
+
+
+实体对象属性是否允许为null这个问题，Jimmer用非常严格的方式处理。即便对Java开发者而言，也要求如同kotlin开发者一样认真考虑思考每个属性是否允许为null。
+
+
+警告
+
+明确说明实体对象的每个属性是否允许为null，对Jimmer而言非常重要，很多功能都会受其影响。
+
+
+## 定义属性的可空性
+
+
+### Kotlin
+
+
+Kotlin支持空安全，`T` 表示非空，`T?` 表示可为空，按照kotlin的本身的方式声明实体属性即可。
+
+
+### Java
+
+
+Java下属性是否为null，靠以下规则制定
+
+
+- 如果属性类型为boolean、char、byte、short、int、long、float或double，则非null
+- 如果属性类型为Boolean、Character、Byte、Short、Integer、Long、Float或Double，则可null
+- 否则
+
+
+- 如果属性被任何简名为`Nullable`或`Null`的annotation修饰，则可null
+- 否则，默认非null
+
+备注
+
+推荐使用`org.jetbrains.annotations.Nullable`，因为
+
+
+- 虽然可识别的annotation不受限制，但是如果使用了未被Jimmer annotation processor默认包含的annotation，需要将其依赖添加到annotation processor中，这终归是麻烦。
+- `org.jetbrains.annotations.Nullable`受Intellij支持
+
+
+## 注意事项
+
+
+信息
+
+这里会出现一系列现在没讲解的概念，它们都会在后续文档中讲解。
+
+
+这里仅仅做一个注意事项的简单罗列，请读者先忽略这些名词，本文也不提供相关例子，读者了解所有后续概念后再回来查看。
+
+
+- `@Id`属性必须非null
+
+
+和JPA/Hibernate有很大不同
+
+
+- JPA/Hibernate推荐将id属性声明为可空类型，比如，对Java而言，就是`Long`而非`long`，这样，保存数据时可表达没有id而需要自动分配的情况。
+- Jimmer必须将id属性声明为非空类型，比如，对Java而言，就是`long`而非`Long`。Jimmer靠实体对象本身的动态性来表达id属性的缺失。
+- 一对多和多对多属性必须非null
+
+
+一对多和多对多属性用长度为0的集合表示没数据，而非null。
+- 当以下任何一种情况满足时，一对一和多对一属性必须可null
+
+
+- 基于中间表映射，而非外键
+- 基于伪外键，而非真实外键
+
+
+信息
+
+所谓“伪外键”，指在开发人员意识中是外键，但是数据库中并没有对应的外键约束。
+- 远程关联
+- 作为镜像端的@OneToOne关联
+- 如果关联实体被施加了[全局过滤器](query/global-filter)，那么，对于一对多/多对一关联而言，即使直接基于外键也必须可null，除非以下条件全部满足：
+
+
+- 所有被施加于关联实体的全局过滤器都实现了`AssociationIntegrityAssuranceFilter`/`KAssociationIntegrityAssuranceFilter`接口。
+- 所有被施加于关联实体的全局过滤器也被施加于当前实体。
+
+
+## inputNotNull
+
+
+如果前文所言，由于某些特有的查询场景，基于外键的一对一和多对一属性必须被声明为可空的。
+
+
+然而，在保存数据时，开发人员可能不期望用户将数据库的外键字段修改为null。这时，可以将`@OneToOne`或`@ManyToOne`的`inputNotNull`设置为true，例如
+
+
+- `@OneToOne(inputNotNull = true)`
+- `@ManyToOne(inputNotNull = true)`
+
+
+如果某个关联属性配置了`inputNotNull`，在[数据库验证](configuration/database-validation)中会被优先考虑，从而验证数据库中外键字段不能为null。
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/mapping/base/nullity.mdx)最后 于 **2025年9月16日**  更新
+- [定义属性的可空性](#定义属性的可空性)
+- [Kotlin](#kotlin)
+- [Java](#java)
+- [注意事项](#注意事项)
+- [inputNotNull](#inputnotnull)

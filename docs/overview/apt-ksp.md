@@ -1,0 +1,234 @@
+---
+title: 'APT/KSP'
+---
+# APT/KSP
+
+
+## 基本概念
+
+
+Jimmer高度依赖于JVM生态的预编译技术：
+
+
+- 对于Java而言，就是APT，即[Annotation Processor Tool](https://www.jetbrains.com/help/idea/annotation-processors-support.html)
+- Kotlin而言，就是KSP，即[Kotlin Symbol Processing](https://kotlinlang.org/docs/ksp-overview.html)
+
+信息
+
+使用APT/KSP自动生成的一些代码，是使用Jimmer所必须的。
+
+
+因此，如果使用Intellij打开[官方例子](https://github.com/babyfish-ct/jimmer-examples)中的任何一个Java/Kotlin项目，都会发现一些本该被自动生成代码并不存在的问题。对此，可以选择以下任何一种方法：
+
+
+- 先用命令行在要打开的项目目录下执行`./mvnw install`*(仅Java例子提供)*或`./gradlew build`命令完成代码生成，再用Intellij打开项目。
+- 直接用Intellij打开项目，暂时无视IDE的错误，依赖下载完毕后，直接运行项目的main方法或单元测试 *(save-command/save-command-kt以单元测试演示功能)*，所有IDE错误将会自动消失，应用也会被正确启动。
+
+
+## 如何使用
+
+
+你既可以使用Jimmer标准的构建方式，也可以采用社区提供的插件
+
+
+- 用法一：使用Jimmer标准的构建方式
+
+
+- Java(Maven)
+- Java(Gradle)
+- Kotlin(Gradle.kts)
+pom.xml
+
+```
+...省略其他代码...<build>    <plugins>        <plugin>            <groupId>org.apache.maven.plugins</groupId>            <artifactId>maven-compiler-plugin</artifactId>            <version>3.10.1</version>            <configuration>                <annotationProcessorPaths>                    <path>                        <groupId>org.babyfish.jimmer</groupId>                        <artifactId>jimmer-apt</artifactId>                        <version>${jimmer.version}</version>                    </path>                </annotationProcessorPaths>            </configuration>        </plugin>    </plugins></build>...省略其他代码...
+```
+
+build.gradle
+
+```
+dependencies {        ...省略其他依赖...    annotationProcessor "org.babyfish.jimmer:jimmer-apt:${jimmerVersion}"}
+```
+
+build.gradle.kts
+
+```
+plugins {    // 添加ksp插件    id("com.google.devtools.ksp") version "1.7.10-1.0.6"    ...省略其他插件...}dependencies {        // 应用jimmer的ksp代码生成器    ksp("org.babyfish.jimmer:jimmer-ksp:${jimmerVersion}")    ...省略其他依赖...}// 将生成的代码添加到编译路径中。// 没有这个配置，gradle命令仍然可以正常执行，// 但是, Intellij无法找到生成的源码。kotlin {    sourceSets.main {        kotlin.srcDir("build/generated/ksp/main/kotlin")    }}
+```
+- 用法二：使用社区提供的出插件
+
+
+[https://github.com/ArgonarioD/gradle-plugin-jimmer](https://github.com/ArgonarioD/gradle-plugin-jimmer)
+- Java(Gradle插件)
+- Kotlin(插件)
+build.gradle
+
+```
+plugins {    // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本    // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号    id "tech.argonariod.gradle-plugin-jimmer" version "latest.release"    ... 省略其它插件 ...}jimmer {    // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式    version = "${jimmerVersion}"}
+```
+
+build.gradle.kts
+
+```
+plugins {    // 从 Gradle 7.0 开始，可以使用 "latest.release" 代替具体的版本号，代表使用最新版本    id("tech.argonariod.gradle-plugin-jimmer") version "latest.release"    // 也可以使用 '+' 字符代表从 '+' 字符开始匹配最新的版本号    // 添加ksp插件    id("com.google.devtools.ksp") version "1.7.10+"    ... 省略其它插件 ...}jimmer {    // 设定 jimmer 依赖版本，此处也可以使用 "latest.release" 或 "0.+" 等版本范围表达式    version = "${jimmerVersion}"}
+```
+
+备注
+
+[KSP](https://kotlinlang.org/docs/ksp-overview.html)官方只支持gradle，
+经过实践验证，KSP的第三方Maven插件支持跟不上`kotlin/KSP`本身的版本迭代，往往在升级过程中遇到很多问题。
+
+
+最终Jimmer放弃了对Kotlin的Maven支持，请Kotlin开发人员使用Gradle.
+
+
+对于[官方例子](https://github.com/babyfish-ct/jimmer-examples)中的所有项目而言
+
+
+- 所有Java例子都具备`pom.xml`和`build.gradle`，即，maven/gradle双支持。
+
+
+首次打开这种项目时，Intellij会询问以何种方式打开，做出选择即可。
+
+
+如果要切换打开方式，退出Intellij，删除项目下的隐藏目录`.idea`，再用Intellij打开，重新选择即可。
+- 所有的Kotlin例子，只具备`build.gradle.kts`文件，即，只支持gradle。前面已经解释原因。
+
+
+Intellij对通过maven引入的annotation processor的整合存在一些轻率的过度优化措施，导致gradle和IDE配合的开发体验优于maven。
+
+
+## 在哪使用
+
+
+业务项目很少是一个单项目，更多时候是借助于Maven和Gradle这类构建工具分割成多个子项目。
+
+
+那么？我们应在哪些子项目中使用前面讲过的配置呢？
+
+
+| 子项目类型 | 使用目的 | 注意事项 |
+| --- | --- | --- |
+| 定义实体的项目 | 根据实体定义生成必要的代码，例如Draft，SQL DSL, Fetcher |  |
+| 在src/main/dto目录下定义DTO文件的项目 | 根据DTO语言的代码生成DTO类型 | 对于Java而言，除非当前子项目有实体定义，否则需要随便找个类用@EnableDtoGeneration修饰 |
+| 使用Spring Web注解的项目 | 自动生成Openapi文档和TypeScript代码，将Web Api的Java/Kotlin文档注释写入文档和客户端代码中；支持远程异常 |  |
+
+
+## 注意事项
+
+
+注意事项
+
+
+由于Jimmer是一个编译时框架，考虑到并非所有用户都熟悉Apt和Ksp，有必要提及一个重要细节。
+
+
+Apt/Ksp是行业内的标准技术，Java IDE会给予支持。
+
+
+- 大部分情况下，你的修改都会包含Java或Kotlin代码的变化，
+例如，实体类型变化，或Web Controller变化 *(Jimmer有自己的OpenAPI和TypeScript生成的实现)*。这时只需点击IDE的Run或Debug按钮运行一次，无需全量编译，就可以触发所有的预编译行为，自动生成的源代码和资源文件都会自动变化
+- 少部分情况下，如果仅仅修改DTO文件，即，除了DTO文件外，同一个工程内没有任何Java或Kotlin源码变动，这时，你有三个选择
+
+
+- 采用配套的DTO插件
+- 全量编译，maven或gradle命令，或IDE的Rebuild按钮，都可以达到这个目的
+- 删除受影响工程的编译输出目录后，再点击IDE的Run或Debug按钮
+
+
+## Java代码的两种风格
+
+
+和Kotlin API不同，Java API做不到自动生成的类型不出现在用户代码中。请看如下对比
+
+
+| Draft | 使用生成的类型BookDraft | 使用原实体类型Book |
+| --- | --- | --- |
+| Bookbook=BookDraft.$.produce(b->{b.setName("SQL");b.addIntoAuthors(a->{a.setName("Jessica");});b.addIntoAuthors(a->{a.setName("Bob");});}); | valbook=Book{name="SQL in Action"authors().addBy{name="Jessica"}authors().addBy{name="Bob"}} |  |
+| SQL DSL | 使用生成的类型BookTable | 使用原实体类型Book |
+| BookTabletable=BookTable.$;List<Book>books=sqlClient.createQuery(table).where(table.storeId().isNull()).orderBy(table.name()).select(table).execute(); | List<Book>books=sqlClient.createQuery(Book::class){where(table.storeId.isNull())orderBy(table.name)select(table)}.execute() |  |
+| Fetcher | 使用生成的类型BookFetcher,BookStoreFetcher和AuthorFetcher | 使用原实体类型Book |
+| Fetcher<Book>fetcher=BookFetcher.$.allScalarFields().store(BookStoreFetcher.$.allScalarFields()).authors(AuthorFetcher.$.allScalarFields()) | valfetcher=newFetcher(Book::class).by{allScalarFields()store{allScalarFields()}authors{allScalarFields()}} |  |
+
+
+可以看到，Java和Kotlin的抽象能力不同，导致API设计能达到的效果不同：
+
+
+- 对于Kotlin而言，无论何种场景，都只需使用原实体类型`Book`。
+- 对于Java而言，不得不使用由Annotation Processor自动生成的类型，例如`BookDraft`, `BookTable`, `BookFetcher`等。
+
+
+上述Java代码中频繁出现`.$`，`$`这些类的静态只读字段。
+
+
+其实，使用`$`是最简单的使用方式。然而，考虑到部分Java开发人员对`$`存在主观偏见，对定义实体类型的Java子项目而言，
+Jimmer的APT还是生成4个汇总类型:
+
+
+- `Objects`类
+- `Tables`接口
+- `TableExes`接口
+- `Fetchers`接口
+
+
+这4个类型所在的包，为所有实体的公共包。
+
+
+这4个类型通过定义静态常量为Java代码提供另外一种代码风格，两种风格对比如下
+
+
+| 接受$的风格 | 不接受$的风格 |
+| --- | --- |
+| BookDraft.$.produce | Immutables.createBook |
+| BookTable.$ | Tables.BOOK_TABLE |
+| BookTableEx.$ | TableExes.BOOK_TABLE_EX |
+| BookFetcher.$ | Fetchers.BOOK_FETCHER |
+
+
+另外，`Tables`, `TableExes`和`Fetchers`是接口，可以使用implements语句来进一步简化代码 *(由于Intellij对静态导入支持不友好，实现定义常量的接口仍然是值得推荐的技巧)*，例如
+
+
+```
+public interface FetcherConstantsimplements Fetchers {        Fetcher<Book> BOOK_DETAIL_FETCHER =        BOOK_FETCHER            .allScalarFields()            .store(                BOOK_STORE_FETCHER                    .allScalarFields()            )            .authors {                AUTHOR_FETCHER                    .allScalarFields()            };}
+```
+
+
+## 和Lombok配合
+
+
+Java项目常常和Lombok配合使用使用。
+
+
+默认情况下，如果项目除了lombok外没有其他APT，只需导入lombok的依赖即可。
+
+
+然而，一旦引入了其他APT配置*(不一定是Jimmer的APT，任何其他APT)*，则必须明确配置lombok的APT。
+
+
+- Java(Maven)
+- Java(Gradle)
+- Java(Gradle插件)
+pom.xml
+
+```
+...省略其他代码...<build>    <plugins>        <plugin>            <groupId>org.apache.maven.plugins</groupId>            <artifactId>maven-compiler-plugin</artifactId>            <version>3.10.1</version>            <configuration>                <annotationProcessorPaths>                    <path>                        <groupId>org.projectlombok</groupId>                        <artifactId>lombok</artifactId>                        <version>${lombok.version}</version>                    </path>                    <path>                        <groupId>org.babyfish.jimmer</groupId>                        <artifactId>jimmer-apt</artifactId>                        <version>${jimmer.version}</version>                    </path>                </annotationProcessorPaths>            </configuration>        </plugin>    </plugins></build>...省略其他代码...
+```
+
+build.gradle
+
+```
+dependencies {        ...省略其他依赖...    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"    annotationProcessor "org.babyfish.jimmer:jimmer-apt:${jimmerVersion}"}
+```
+
+build.gradle
+
+```
+dependencies {            ...省略其他依赖...    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"}
+```
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/overview/apt-ksp.mdx)最后 于 **2025年9月16日**  更新
+- [基本概念](#基本概念)
+- [如何使用](#如何使用)
+- [在哪使用](#在哪使用)
+- [注意事项](#注意事项)
+- [Java代码的两种风格](#java代码的两种风格)
+- [和Lombok配合](#和lombok配合)

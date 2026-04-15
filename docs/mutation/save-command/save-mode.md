@@ -1,0 +1,766 @@
+---
+title: '根对象保存模式'
+---
+# 根对象保存模式
+
+
+## 保存模式
+
+
+保存指令支持5种保存模式，控制聚合根本身的保存方式
+
+
+- UPSERT: 这是默认的模式。先通过查询判断被保存的聚合根对象是否存在：
+
+
+- 如果不存在：执行INSERT语句
+- 如果存在：执行UPDATE语句
+- INSERT_ONLY: 无条件执行INSERT语句
+- INSERT_IF_ABSENT:
+
+
+- 如果数据已经存在，忽略操作
+- 否则，插入数据
+- UPDATE_ONLY: 无条件执行UPDATE语句
+- NON_IDEMPOTENT_UPSERT *(不推荐)*:
+
+
+- 如果对象的@Id属性或@Key属性被指定，执行与UPSERT等价的行为
+- 否则，执行INSERT操作
+
+警告
+
+保存模式仅影响聚合根对象，不影响其他关联对象。
+
+
+对于关联对象而言，请参考[关联对象保存模式](mutation/save-command/association/associated-save-mode)。
+
+
+## 1. INSERT_ONLY
+
+
+`INSERT_ONLY`表示无条件插入数据
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setName("SQL in Action");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));List<Long> allocatedIds = sqlClient        .saveEntities(        books,         SaveMode.INSERT_ONLY    )    .getItems()    .stream()    .map(item -> item.getModifiedEntity().id())    .collect(Collectors.toList());System.out.println("Allocated ids: " + allocatedIds);
+```
+
+
+```
+val books = listOf(    Book {        name = "SQL in Action"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val allocatedIds = sqlClient    .saveEntities(        books,        SaveMode.INSERT_ONLY    )    .items    .map {        it.modifiedEntity.id    }println("Allocated ids: $allocatedIds")
+```
+
+
+INSERT_ONLY的工作方式非常简单，不做任何判断，无条件插入。
+
+
+Jimmer会为不同数据库生成不同的SQL
+
+
+- 大部分数据库
+- Mysql
+
+
+```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(?, ?, ?, ?)/* batch-0: SQL in Action, 3, 49.9, 2 *//* batch-1: [LINQ in Action, 2, 39.9, 2 */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* SQL in Action */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)
+```
+2. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)
+```
+
+
+这个例子中，由于id属性对应的列采用了数据自动编号。因此批量插入完成后，数据库为所有数据分配的id都将被返回，打印结果为
+
+
+```
+Allocated ids: [100, 101]
+```
+
+
+## 2. UPDATE_ONLY
+
+
+`UPDATE_ONLY`表示无条件更新数据，分为两种情况
+
+
+- 对于Id-Specified对象而言，按照id修改数据
+- 对于制定Key-Specified而言，按照key修改数据
+
+
+### 按照id更新数据
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setId(3L); // Matched        draft.setName("SQL in Action");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setId(100L); // Not matched        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));BatchSaveResult<Book> result = sqlClient    .saveEntities(        books,        SaveMode.UPDATE_ONLY    );System.out.println("Affected row count: " + result.getTotalAffectedRowCount());
+```
+
+
+```
+val books = listOf(    Book {        id = 3L        name = "SQL in Action"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        id = 100L        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val result = sqlClient    .saveEntities(        books,        SaveMode.UPDATE_ONLY    )println("Affected row count: ${result.totalAffectedRowCount}")
+```
+
+
+对象的id属性被指定，因此根据对象的id来更新对象，生成的批量操作SQL如下
+
+
+- 大多数数据库
+- Mysql
+
+
+```
+update BOOKset    NAME = ?,    EDITION = ?,    PRICE = ?,    STORE_ID = ?where    ID = ?/* batch-0: [SQL in Action, 3, 49.9, 2, 3] */* batch-1: [LINQ in Action, 2, 39.9, 2, 100] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+update BOOKset    NAME = ? /* SQL in Action */,    EDITION = ? /* 3 */,    PRICE = ? /* 49.9 */,    STORE_ID = ? /* 2 */where    ID = ? /* 3 *//* batch-1: [LINQ in Action, 2, 39.9, 2, 100] */
+```
+2. ```
+update BOOKset    NAME = ? /* LINQ in Action */,    EDITION = ? /* 2 */,    PRICE = ? /* 39.9 */,    STORE_ID = ? /* 2 */where    ID = ? /* 100 */
+```
+
+
+该批量操作修改企图两条数据，假设数据库只有一条匹配数据，打印结果为`1`。
+
+
+### 按照key更新数据
+
+
+假设Book实体定义如下
+
+
+- Java
+- Kotlin
+Book.java
+
+```
+@Entitypublic interface Book {    @Id    @GeneratedValue(strategy = GenerationType.IDENTITY)    long id();    @Key    String name();    @Key    int edition();    ...省略其他既非id也非key的属性...}
+```
+
+Book.kt
+
+```
+@Entitypublic interface Book {    @Id    @GeneratedValue(strategy = GenerationType.IDENTITY)    val id: Long    @Key    val name: String    @Key    val edition: Int    ...省略其他既非id也非key的属性...}
+```
+
+
+这里`Book.name`和`Book.edition`被[@Key](mapping/advanced/key)修饰。
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        // Id is not specified        draft.setName("Learning GraphQL");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        // Id is not specified        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));BatchSaveResult<Book> result = sqlClient    .saveEntities(        books,        SaveMode.UPDATE_ONLY    );for (MutationResultItem<Book> item : result.getItems()) {    if (ImmutableObjects.isLoaded(item.getModifiedEntity(), BookProps.ID)) {        System.out.println("Data is updated, updated id is " + item.getModifiedEntity().id());    } else {        System.out.println("Data is not updated");    }}
+```
+
+
+```
+val books = listOf(    Book {        // Id is not specified        name = "Learning GraphQL"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        // Id is not specified        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val result = sqlClient    .saveEntities(        books,        SaveMode.UPDATE_ONLY    )for (item in result.item) {    if (isLoaded(item.modifiedEntity, Book::id)) {        println("Data is updated, updated id is ${item.isModified}")    } else {        println("Data is not updated")    }}
+```
+
+
+对象的id属性没有指定，因此根据对象的key来更新对象，生成的批量操作SQL如下
+
+
+- 大多数数据库
+- Mysql
+
+
+```
+update BOOKset    PRICE = ?,    STORE_ID = ?where    NAME = ?    and    EDITION = ?/* batch-0: [49.9, 2, Learning GraphQL, 3] *//* batch-1: [39.9, 2, LINQ in Action, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+update BOOKset    PRICE = ? /* 49.9 */,    STORE_ID = ? /* 2 */where    NAME = ? /* Learning GraphQL */    and    EDITION = ? /* 3 *//* batch-1: [39.9, 2, LINQ in Action, 2] */
+```
+2. ```
+update BOOKset    PRICE = ? /* 39.9 */,    STORE_ID = ? /* 2 */where    NAME = ? /* LINQ in Action */    and    EDITION = ? /* 2 */
+```
+
+
+打印结果为
+
+
+```
+Data is updated, updated id is 3Data is not updated
+```
+
+
+## 3. UPSERT
+
+
+`UPSERT`表示先判断数据是否存在，如果存在则更新，否则即插入
+
+
+- 对于Id-Specified对象而言，按照id判断数据是否存在，再决定INSERT或UPDATE
+- 对于制定Key-Specified而言，按照key判断数据是否存在，再决定INSERT或UPDATE
+
+
+### 按照Id判断数据是否存在
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setId(3L);        draft.setName("Learning GraphQL");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setId(100L);        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));sqlClient    .saveEntities(        books,        SaveMode.UPSERT    );
+```
+
+
+```
+val books = listOf(    Book {        id = 3L        name = "Learning GraphQL"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        id = 100L        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })sqlClient.save(    books,    SaveMode.UPSERT)
+```
+
+
+Jimmer会优先使用数据库本身的能力进行UPSERT操作，因此，会为不同的数据库生成不同的SQL
+
+
+- H2
+- Mysql
+- Postgres
+
+
+```
+merge into BOOK(    ID, NAME, EDITION, PRICE, STORE_ID) key(ID) values(    ?, ?, ?, ?, ?)/* batch-0: [3, Learning GraphQL, 3, 49.9, 2] *//* batch-1: [100, LINQ in Action, 2, 39.9, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert into BOOK(    ID, NAME, EDITION, PRICE, STORE_ID) values(    ? /* 3 */,     ? /* Learning GraphQL */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)on duplicate key update     NAME = values(NAME),     EDITION = values(EDITION),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+2. ```
+insert into BOOK(    ID, NAME, EDITION, PRICE, STORE_ID) values(    ? /* 100 */,     ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)on duplicate key update     NAME = values(NAME),     EDITION = values(EDITION),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+
+
+```
+insert into BOOK(    ID, NAME, EDITION, PRICE, STORE_ID) values(?, ?, ?, ?, ?)on conflict(ID) do update set    NAME = excluded.NAME,     EDITION = excluded.EDITION,     PRICE = excluded.PRICE,     STORE_ID = excluded.STORE_ID)/* batch-0: [3, Learning GraphQL, 3, 49.9, 2] *//* batch-1: [100, LINQ in Action, 2, 39.9, 2] */
+```
+
+
+### 按照Key判断数据是否存 在
+
+
+如果不指定对象的id，例如
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setName("Learning GraphQL");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setName("GraphQL in Action");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setName("Kotlin in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));List<Long> ids = sqlClient    .saveEntities(        books,        SaveMode.UPSERT    )    .getItems()    .stream().map(it -> it.getModifiedEntity().id())    .collect(Collectors.toList());System.out.println(ids);
+```
+
+
+```
+val books = listOf(    Book {        name = "Learning GraphQL"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        name = "GraphQL in Action"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    },    Book {        name = "Kotlin in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val ids = sqlClient.save(    books,    SaveMode.UPSERT).items.map{ it.id }println(ids)
+```
+
+
+默认情况下，Jimmer会尽可能使用数据本身的UPSERT能力。
+
+
+然而，目前这种情况下，做不到这一点 *(稍后我们马上讨论这个问题如何解决)*。
+
+
+这时，Jimmer会先执行查询，然后根据查询结果来决定应该对那些数据进行INSERT，对那些数据生成UPDATE语句。共三条SQL语句
+
+
+1. 查询，并给出原因
+
+
+```
+Purpose: COMMAND(KEY_UNIQUE_CONSTRAINT_REQUIRED)SQL: select    tb_1_.ID,    tb_1_.NAME,    tb_1_.EDITIONfrom BOOK tb_1_where    (tb_1_.NAME, tb_1_.EDITION) in (        (? /* Learning GraphQL */, ? /* 3 */),         (? /* GraphQL in Action */, ? /* 3 */),         (? /* LINQ in Action */, ? /* 2 */),         (? /* Kotlin in Action */, ? /* 2 */)    )
+```
+
+
+信息
+
+Jimmer在日志中打印了`KEY_UNIQUE_CONSTRAINT_REQUIRED`，这个值叫做QueryReason。
+
+
+Jimmer优先考虑利用数据库本身的UPSERT能力，如果无法做到导致了查询语句，会给出QueryReason，以帮助用户调查和寻找解决方案。
+2. 对不存在的数据进行插入操作
+
+
+- 大部分数据库
+- Mysql
+
+
+```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ?, ?, ?, ?)/* batch-0: [LINQ in Action, 2, 39.9, 2] *//* batch-1: [Kotlin in Action, 2, 39.9, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert into BOOK(    NAME , EDITION, PRICE, STORE_ID) values(    ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)
+```
+2. ```
+insert into BOOK(    NAME , EDITION, PRICE, STORE_ID) values(    ? /* Kotlin in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)
+```
+3. 对存在的数据进行更新操作
+
+
+- H2
+- Mysql
+- Postgres
+
+
+```
+update BOOKset    PRICE = ?,    STORE_ID = ?where    ID = ?/* batch-0: [49.9, 2, 3] *//* batch-1: [49.9, 2, 12] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+update BOOKset    PRICE = ? /* 49.9 */,    STORE_ID = ? /* 2 */where    ID = ? /* 3 */
+```
+2. ```
+update BOOKset    PRICE = ? /* 49.9 */,    STORE_ID = ? /* 2 */where    ID = ? /* 12 */
+```
+
+
+打印结果如下
+
+
+```
+[3, 12, 100, 101]
+```
+
+
+其中
+
+
+- 3和12表示被更新的数据id
+- 100和101表示数据库为被插入数据分配的新id
+
+
+### 改进后的按Key判断
+
+
+在上个例子中，Jimmer执行了查询，并给出了QueryReason `KEY_UNIQUE_CONSTRAINT_REQUIRED`。
+
+
+Jimmer为所有的QueryReason提供了详尽的文档注释，详情请参见[QueryReason](https://github.com/babyfish-ct/jimmer/blob/main/project/jimmer-sql/src/main/java/org/babyfish/jimmer/sql/ast/mutation/QueryReason.java)。
+
+
+就这里的`KEY_UNIQUE_CONSTRAINT_REQUIRED`而言，表示需要
+
+
+1. 为`Book.name`和`Book.edition`属性建立唯一性约束，即
+
+
+```
+alter table book    add constraint uq_book__name_edition        unique(name, edition);
+```
+
+
+这是因为数据库的UPSERT功能依赖于唯一约束 *(或唯一索引)*
+2. 通过`@KeyUniqueConstraint`注解告诉Jimmer，被`@Key`修饰的属性在数据库中存在对于的唯一约束 *(或唯一索引)*
+
+
+- Java
+- Kotlin
+Book.java
+
+```
+@Entity@KeyUniqueConstraintpublic interface Book {    @Id    @GeneratedValue(strategy = GenerationType.IDENTITY)    long id();    @Key    String name();    @Key    int edition();    ...省略其他既非id也非key的属性...}
+```
+
+Book.kt
+
+```
+@Entity@KeyUniqueConstraintpublic interface Book {    @Id    @GeneratedValue(strategy = GenerationType.IDENTITY)    val id: Long    @Key    val name: String    @Key    val edition: Int    ...省略其他既非id也非key的属性...}
+```
+
+
+警告
+
+对于MySQL而言，需要
+
+
+```
+@KeyUniqueConstraint(noMoreUniqueConstraints = true)
+```
+
+
+一旦完成这两点改进，再次执行上一个例子。Jimmer不在执行select语句，而是直接利用数据库本身的UPSERT能力
+
+
+- H2
+- Mysql
+- Postgres
+
+
+```
+merge into BOOK(    NAME, EDITION, PRICE, STORE_ID) key(    NAME, EDITION) values(    ?, ?, ?, ?)/* batch-0: [Learning GraphQL, 3, 49.9, 2] *//* batch-1: [GraphQL in Action, 3, 49.9, 2] *//* batch-2: [LINQ in Action, 2, 39.9, 2] *//* batch-3: [Kotlin in Action, 2, 39.9, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* Learning GraphQL */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)on duplicate key update     /* fake update to return all ids */ ID = last_insert_id(ID),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+2. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* GraphQL in Action */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)on duplicate key update     /* fake update to return all ids */ ID = last_insert_id(ID),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+3. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)on duplicate key update     /* fake update to return all ids */ ID = last_insert_id(ID),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+4. ```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(    ? /* Kotlin in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)on duplicate key update     /* fake update to return all ids */ ID = last_insert_id(ID),     PRICE = values(PRICE),     STORE_ID = values(STORE_ID)
+```
+
+
+```
+insert into BOOK(    NAME, EDITION, PRICE, STORE_ID) values(?, ?, ?, ?, ?)on conflict(    NAME, EDITION) do update set    PRICE = excluded.PRICE,     STORE_ID = excluded.STORE_IDreturning ID/* batch-0: [Learning GraphQL, 3, 49.9, 2] *//* batch-1: [GraphQL in Action, 3, 49.9, 2] *//* batch-2: [LINQ in Action, 2, 39.9, 2] *//* batch-3: [Kotlin in Action, 2, 39.9, 2] */
+```
+
+
+信息
+
+如果你在使用MySQL，以下两点需要注意
+
+
+- 和Posgres能通过`on conflict(NAME, EDITION)`明确指定用于判断数据存在性的列不同，
+MySQL比较特殊，其`on duplicate key`无法明确制定指定用于判断数据存在性的列。
+
+
+因此，当`insert ... on duplicate key`语句不插入id字段时，MySQL会基于所有参与
+唯一性约束字段判断数据是否存在，即使这些字段隶属于多个不同的唯一性约束。
+
+
+因此，必须为注解添加额外的参数`noMoreUniqueConstraints`， 即
+
+
+```
+@KeyUniqueConstraint(noMoreUniqueConstraints = true)
+```
+
+
+`noMoreUniqueConstraints = true`告诉Jimmer，实体所对应的表只有一个唯一约束 *(或唯一索引)*。
+用户需对自己的承诺负责。
+- 为MySQL所生成的SQL包含
+
+
+```
+/* fake update to return all ids */ ID = last_insert_id(ID)
+```
+
+
+这是一个相对tricky的技巧。如果数据被更新，返回被更新数据的已有id；否则，返回数据库为自动插入的数据分配的id。
+
+
+除了利用数据库本身的UPSERT能力外，功能和上个例子完全一样，打印结果也不会有任何改变，如下
+
+
+```
+[3, 12, 100, 101]
+```
+
+
+其中
+
+
+- 3和12表示被更新的数据id
+- 100和101表示数据库为被插入数据分配的新id
+
+
+## 4. INSERT_IF_ABSENT
+
+
+按照id或key判断数据在数据库中是否存在，如果不存在，就插入；否则忽略操作。
+
+
+### 按照Id判断数据是否存在
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setId(3L); // Matched        draft.setName("SQL in Action");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setId(100L); // Not matched        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));BatchSaveResult<Book> result = sqlClient    .saveEntities(        books,        SaveMode.INSERT_IF_ABSENT    );System.out.println("Affected row count: " + result.getTotalAffectedRowCount());
+```
+
+
+```
+val books = listOf(    Book {        id = 3L // Matched        name = "SQL in Action"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        id = 100L // Not matched        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val result = sqlClient    .saveEntities(        books,        SaveMode.INSERT_IF_ABSENT    )println("Affected row count: ${result.totalAffectedRowCount}")
+```
+
+
+Jimmer会优先使用数据库本身的能力进行`INSERT_IF_ABSENT`操作，因此，会为不同的数据库生成不同的SQL
+
+
+- H2
+- Mysql
+- Postgres
+
+
+```
+merge into BOOK tb_1_ using(values(?, ?, ?, ?, ?)) tb_2_(    ID, NAME, EDITION, PRICE, STORE_ID) on tb_1_.ID = tb_2_.ID when not matched then     insert(ID, NAME, EDITION, PRICE, STORE_ID)values    (tb_2_.ID, tb_2_.NAME, tb_2_.EDITION, tb_2_.PRICE, tb_2_.STORE_ID)/* batch-0: [3, SQL in Action, 3, 49.9, 2] *//* batch-1: [100, LINQ in Action, 2, 39.9, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert ignore into BOOK(ID, NAME, EDITION, PRICE, STORE_ID)values(    ? /* 3 */,     ? /* Learning GraphQL */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)
+```
+2. ```
+insert ignore into BOOK(ID, NAME, EDITION, PRICE, STORE_ID)values(    ? /* 100 */,     ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)
+```
+
+
+```
+insert into BOOK(ID, NAME, EDITION, PRICE, STORE_ID)values(?, ?, ?, ?, ?)on conflict(ID) do nothing/* batch-0: [3, Learning GraphQL, 3, 49.9, 2] *//* batch-1: [100, LINQ in Action, 2, 39.9, 2] */
+```
+
+
+假设插入一条数据忽略一条数据，打印结果为
+
+
+```
+1
+```
+
+
+### 按照Key判断数据是否存在
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setName("SQL in Action");        draft.setEdition(3);        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setName("LINQ in Action");        draft.setEdition(2);        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));List<Long> ids = sqlClient    .saveEntities(        books,        SaveMode.INSERT_IF_ABSENT    )    .getItems()    .stream()    .map(it ->         ImmutableObjects.isLoaded(it, BookProps.ID) ?            it.getModifiedEntity().id() :            null    )    .collect(Collectors.toList());System.out.println(ids);
+```
+
+
+```
+val books = listOf(    Book {        name = "SQL in Action"        edition = 3        price = BigDecimal("49.9")        storeId = 2L    },    Book {        name = "SQL in Action"        edition = 2        price = BigDecimal("39.9")        storeId = 2L    })val ids = sqlClient    .saveEntities(        books,        SaveMode.INSERT_IF_ABSENT    )    .items    .map {         if (isLoaded(it, Book::id)) {            it.originalEntity.id        } else {            null        }     }println(ids)
+```
+
+
+信息
+
+在这种情况下，Jimmer会尽可能利用数据库本身的能力来实现`INSERT_IF_ABSENT`操作。
+如果做不到，Jimmer会执行查询来决定应该继续执行插入操作还是忽略操作，并告诉开 发人员查询原因。
+
+
+然而，不得不借助查询以帮助判断的这种情况已经在前面讲`UPSERT`时讲解过了。
+为了简化本文，这里不妨假设无需借助查询，直接利用数据本身的`INSERT_IF_ABSENT`能力。
+
+
+Jimmer会为不同的数据库生成不同的SQL
+
+
+- H2
+- Mysql
+- Postgres
+
+
+```
+merge into BOOK tb_1_ using(values(?, ?, ?, ?)) tb_2_(    NAME, EDITION, PRICE, STORE_ID) on     tb_1_.NAME = tb_2_.NAME and    tb_1_.EDITION = tb_2_.EDITION when not matched then     insert(ID, NAME, EDITION, PRICE, STORE_ID)values    (tb_2_.ID, tb_2_.NAME, tb_2_.EDITION, tb_2_.PRICE, tb_2_.STORE_ID)/* batch-0: [SQL in Action, 3, 49.9, 2] *//* batch-1: [LINQ in Action, 2, 39.9, 2] */
+```
+
+警告
+
+默认情况下，MySQL的批量操作不会被采用，而采用多条SQL。具体细节请参考[MySQL的问题](mutation/save-command/mysql)
+
+
+1. ```
+insert ignore into BOOK(NAME, EDITION, PRICE, STORE_ID)values(    ? /* Learning GraphQL */,     ? /* 3 */,     ? /* 49.9 */,     ? /* 2 */)
+```
+2. ```
+insert ignore into BOOK(NAME, EDITION, PRICE, STORE_ID)values(    ? /* LINQ in Action */,     ? /* 2 */,     ? /* 39.9 */,     ? /* 2 */)
+```
+
+
+```
+insert into BOOK(NAME, EDITION, PRICE, STORE_ID)values(?, ?, ?, ?, ?)on conflict(    NAME, EDITION) do nothingreturning ID/* batch-0: [Learning GraphQL, 3, 49.9, 2] *//* batch-1: [LINQ in Action, 2, 39.9, 2] */
+```
+
+
+打印结果为
+
+
+```
+[null, 100]
+```
+
+
+其中
+
+
+- 第一条数据已经存在，插入操作被忽略，操作被忽略，无法返回id
+- 第二条数据不经存在，执行插入操作，新分配的自动编号为100
+
+
+## 5. NON_IDEMPOTENT_UPSERT
+
+
+之前我们已经展示了`INSERT_ONLY`、`UPDATE_ONLY`、`UPSERT`和`INSERT_IF_ABSENT`这四种模式。
+在前面的例子中，被保存的对象不是Id-specified对象，就是Key-specified对象。
+
+
+现在，让我们讨论保存Wild对象，即既无id也无key的对象。
+
+
+- Java
+- Kotlin
+
+
+```
+List<Book> books = Arrays.asList(    Immutables.createBook(draft -> {        draft.setPrice(new BigDecimal("49.9"));        draft.setStoreId(2L);    }),    Immutables.createBook(draft -> {        draft.setPrice(new BigDecimal("39.9"));        draft.setStoreId(2L);    }));List<Long> ids = sqlClient    .saveEntities(        books,        // 默认SaveMode.UPSERT    )    .getItems()    .stream()    .map(it -> it.getModifiedEntity().id())    .collect(Collectors.toList());System.out.println(ids);
+```
+
+
+```
+val books = listOf(    Book {        price = BigDecimal("49.9")        storeId = 2L    },    Book {        price = BigDecimal("39.9")        storeId = 2L    })val ids = sqlClient    .saveEntities(        books,        // 默认SaveMode.UPSERT    )    .items    .map { it.originalEntity.id }println(ids)
+```
+
+
+这段代码会导致如下异常 *(为了便于阅读，这里进行了格式化)*
+
+
+```
+Save error caused by the path: "<root>":     Cannot save illegal entity object whose type is     "com.yourproject.model.Book", entity with     neither id nor key     cannot be accepted.     There are 3 ways to fix this problem:     1. Specify the id property "id" for save objects;     2. Use the annotation "org.babyfish.jimmer.sql.Key"         to decorate some scalar or foreign key properties in entity type,         or call "setKeyProps" of the save command, to specify the key         properties of "com.yourproject.model.Book",         and finally specified the values of key properties of saved objects;     3. Specify the aggregate-root save mode of the save command to         "INSERT_ONLY(function changed)",         "INSERT_IF_ABSTENT(function changed)",         or         "NON_IDEMPOTENT_UPSERT"
+```
+
+
+为了能保存wild对象，可以使用`NON_IDEMPOTENT_UPSERT`，该模式具备如下功能
+
+
+- 如果被保存的对象是wild对象，和`INSERT_ONLY`模式等价，这是非幂等操作
+- 否则，和`UPSERT`模式等价，这是幂等性操作
+
+警告
+
+此行为和JPA的`merge`或Hibernate的`saveOrUpdate`等价。
+
+
+但是，该模式可能混合幂等性操作和非幂等操作。因此并不推荐。
+
+
+## 多样的保存方法
+
+
+Jimmer提供了多样的保存方法，其中，很多方法都是等价的
+
+
+- 保存单个实体对象
+
+
+| 原始方法 | 等价的快捷方法 |
+| --- | --- |
+| save(entity, SaveMode.UPSERT) | save(entity) |
+| save(entity, SaveMode.INSERT_ONLY) | insert(entity) |
+| save(entity, SaveMode.UPDATE_ONLY) | update(entity) |
+| save(entity, SaveMode.INSERT_IF_ABSENT) | insertIfAbsent(entity) |
+- 保存单个InputDTO对象
+
+
+| 原始方法 | 等价的快捷方法 |
+| --- | --- |
+| save(inputDTO, SaveMode.UPSERT) | save(inputDTO) |
+| save(eninputDTOtity, SaveMode.INSERT_ONLY) | insert(inputDTO) |
+| save(inputDTO, SaveMode.UPDATE_ONLY) | update(inputDTO) |
+| save(inputDTO, SaveMode.INSERT_IF_ABSENT) | insertIfAbsent(inputDTO) |
+- 批量保  存多个实体对象
+
+
+| 原始方法 | 等价的快捷方法 |
+| --- | --- |
+| saveEntities(entities, SaveMode.UPSERT) | saveEntities(entities) |
+| saveEntities(entities, SaveMode.INSERT_ONLY) | insertEntities(entities) |
+| saveEntities(entities, SaveMode.UPDATE_ONLY) | updateEntities(entities) |
+| saveEntities(entities, SaveMode.INSERT_IF_ABSENT) | insertEntitiesIfAbsent(entities) |
+- 批量保存多个InputDTO对象
+
+
+| 原始方法 | 等价的快捷方法 |
+| --- | --- |
+| saveInputs(inputDTOs, SaveMode.UPSERT) | saveInputs(inputDTOs) |
+| saveInputs(inputDTOs, SaveMode.INSERT_ONLY) | insertInputs(inputDTOs) |
+| saveInputs(inputDTOs, SaveMode.UPDATE_ONLY) | updateInputs(inputDTOs) |
+| saveInputs(inputDTOs, SaveMode.INSERT_IF_ABSENT) | insertInputsIfAbsent(inputDTOs) |
+
+
+## 批量保存不同格式的对象
+
+
+为了更好地演示Jimmer的批量修改特性，本文的所有例子都通过`saveEntities`方法保存多个对象，而非通过`save`方法保存一个对象。
+
+
+这些例子灵活地调整被保存对象的格式，以展示不同的功能。但是，具体到每一个例子，`saveEntities`方法所保存的所有对象的格式都是一样的。
+
+
+如果试图用`saveEntities`方法保存多个格式不同的对象，会发生什么呢？
+
+
+Jimmer会先对这些对象按照格式分组，再对每一组实施上述所有功能。
+
+[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/mutation/save-command/save-mode.mdx)最后 于 **2025年9月16日**  更新
+- [保存模式](#保存模式)
+- [1. INSERT_ONLY](#1-insert_only)
+- [2. UPDATE_ONLY](#2-update_only)
+- [按照id更新数据](#按照id更新数据)
+- [按照key更新数据](#按照key更新数据)
+- [3. UPSERT](#3-upsert)
+- [按照Id判断数据是否存在](#按照id判断数据是否存在)
+- [按照Key判断数据是否存在](#按照key判断数据是否存在)
+- [改进后的按Key判断](#改进后的按key判断)
+- [4. INSERT_IF_ABSENT](#4-insert_if_absent)
+- [按照Id判断数据是否存在](#按照id判断数据是否存在-1)
+- [按照Key判断数据是否存在](#按照key判断数据是否存在-1)
+- [5. NON_IDEMPOTENT_UPSERT](#5-non_idempotent_upsert)
+- [多样的保存方法](#多样的保存方法)
+- [批量保存不同格式的对象](#批量保存不同格式的对象)

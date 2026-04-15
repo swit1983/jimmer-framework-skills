@@ -1,21 +1,31 @@
 # 关联缓存
 
-关联缓存：**把当前对象 id 映射为关联对象 id（或集合）**。
+关联缓存：**把当前对象 ID 映射为关联对象 ID（或集合）**。
 
-- `BookStore.books-*` → 一对多关联缓存
-- `Book.store-*` → 多对一关联缓存
-- `Book.authors-*` → 多对多关联缓存
-- `Author.books-*` → 多对多关联缓存
+```
+┌─────────────────────────────────────────┐
+│  Association Cache                       │
+│  Key: BookStore.books-1                  │
+│  Value: [6,5,4,3,2,1,9,8,7]             │
+│                                          │
+│  Key: Book.store-7                       │
+│  Value: 2                                │
+│                                          │
+│  Key: Book.authors-10                    │
+│  Value: [1,2]                            │
+└─────────────────────────────────────────┘
+```
 
 ## 什么时候需要关联缓存
 
 | 场景 | 是否需要 | 说明 |
 |------|----------|------|
-| 一对一/多对一 基于真实外键 | ❌ 不需要 | 外键本身就是关联对象 id，不需要缓存 |
-| 一对一/多对一 反向映射（mappedBy） | ✅ 需要 | |
-| 一对一/多对一 伪外键 | ✅ 需要 | 伪外键没有数据库约束，需要缓存过滤合法 id |
-| 一对一/多对一 基于中间表 | ✅ 需要 | |
-| 一对多 / 多对多 | ✅ always | |
+| 一对一/多对一 基于真实外键 | 不需要 | 外键本身就是关联对象 ID，无需缓存 |
+| 一对一/多对一 反向映射（mappedBy） | 需要 | |
+| 一对一/多对一 伪外键 | 需要 | 伪外键没有数据库约束，需要缓存过滤合法 ID |
+| 一对一/多对一 基于中间表 | 需要 | |
+| 一对多 | always | |
+| 多对多 | always | |
 
 ## 启用关联缓存
 
@@ -26,18 +36,18 @@ public CacheFactory cacheFactory(
         ObjectMapper objectMapper
 ) {
     return new CacheFactory() {
-        
-        // ... 对象缓存配置省略 ...
-        
-        // 一对一 / 多对一：当前对象 id → 关联对象 id
+
+        // ... createObjectCache 省略 ...
+
+        // 一对一 / 多对一：当前对象 ID → 关联对象 ID
         @Override
         public Cache<?, ?> createAssociatedIdCache(@NotNull ImmutableProp prop) {
             return createPropCache(prop, Duration.ofMinutes(10), Duration.ofHours(10));
         }
 
-        // 一对多 / 多对多：当前对象 id → 关联对象 id 集合
+        // 一对多 / 多对多：当前对象 ID → 关联对象 ID 集合
         @Override
-        public Cache<?, ?> createAssociatedIdListCache(@NotNull ImmutableProp prop) {
+        public Cache<?, List<?>> createAssociatedIdListCache(@NotNull ImmutableProp prop) {
             return createPropCache(prop, Duration.ofMinutes(5), Duration.ofHours(5));
         }
 
@@ -64,11 +74,11 @@ public CacheFactory cacheFactory(
 }
 ```
 
-> ⚠️ **重要**：如果对某个关联属性启用关联缓存，必须也要对关联对象的类型启用对象缓存，否则会抛出异常。
+⚠️ 如果对某个关联属性启用关联缓存，必须也对关联对象的类型启用对象缓存，否则会抛出异常。
 
 ## 集合关联默认排序
 
-如果要对集合关联进行排序，同时又要利用关联缓存，需要在实体注解中指定默认排序：
+集合关联如需排序且要利用关联缓存，需在实体注解中指定 `orderedProps`：
 
 ```java
 @Entity
@@ -95,7 +105,7 @@ public interface Book {
 }
 ```
 
-> 如果使用 Fetcher 字段级过滤排序，会导致无法使用关联缓存。因此推荐在实体级别配置默认排序。
+> 如果使用 Fetcher 字段级过滤排序，会导致无法使用关联缓存。推荐在实体级别配置默认排序。
 
 ## 使用示例
 
@@ -113,36 +123,60 @@ List<BookStore> stores = sqlClient
 ```
 
 执行流程：
-1. 查询聚合根 BookStore（聚合根不缓存）
-2. 根据每个 BookStore id，从关联缓存查找 `BookStore.books-{id}` → 得到 book id 列表
+
+1. **查询聚合根** BookStore。聚合根对象不缓存
+2. 根据每个 BookStore ID，从关联缓存查找 `BookStore.books-{id}` → 得到 Book ID 列表
    - 缓存未命中 → 从数据库查询并放入缓存
-   - 缓存命中 → 直接得到 id 列表，不需要 SQL
-3. 根据 id 列表从对象缓存获取 Book 对象
+   - 缓存命中 → 直接得到 ID 列表，不需要 SQL
+3. 根据 ID 列表从**对象缓存**获取 Book 对象
    - 对象缓存未命中 → 从数据库查询并放入缓存
 
 > 缓存过期前，第二次执行不会产生查询 books 的 SQL。
+
+多对多 `Book.authors`：
+
+```java
+List<Book> books = sqlClient
+        .createQuery(BookTable.$)
+        .select(BookFetcher.$
+                .allScalarFields()
+                .authors(AuthorFetcher.$
+                        .allScalarFields()
+                ))
+        .execute();
+```
+
+执行流程同上，只不过关联缓存的 key 是 `Book.authors-{bookId}` → `[authorId1, authorId2, ...]`
 
 ## 缓存一致性
 
 要使用自动一致性，必须启用[触发器](../../mutation/trigger.md)。
 
-Jimmer 会自动维护一致性：
+Jimmer 自动维护一致性：
 
-**修改 Book.store 外键**：
+**修改 Book.store 外键**（从 store=1 改为 store=2）：
+
 ```sql
 update BOOK set STORE_ID = 2 where ID = 7;
 ```
 
 自动删除：
-- `Book-7` → 对象缓存
-- `Book.store-7` → 关联缓存
-- `BookStore.books-1` → 修改前旧 id=1 的一对多关联缓存
-- `BookStore.books-2` → 修改后新 id=2 的一对多关联缓存
 
-**多对多插入** `(10, 3)`：
+| 缓存 Key | 说明 |
+|---------|------|
+| `Book-7` | 对象缓存 |
+| `Book.store-7` | 关联缓存 |
+| `BookStore.books-1` | 修改前旧 ID=1 的一对多关联缓存 |
+| `BookStore.books-2` | 修改后新 ID=2 的一对多关联缓存 |
+
+**多对多插入 (Book-10, Author-3)**：
+
 自动删除：
-- `Book.authors-10` → Book 侧关联缓存
-- `Author.books-3` → Author 侧关联缓存
+
+| 缓存 Key | 说明 |
+|---------|------|
+| `Book.authors-10` | Book 侧关联缓存 |
+| `Author.books-3` | Author 侧关联缓存 |
 
 ## 逻辑删除
 
