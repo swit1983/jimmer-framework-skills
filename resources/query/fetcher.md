@@ -136,6 +136,85 @@ Fetcher<Book> fetcher = BookFetcher.$
     .authors(AuthorFetcher.$.firstName().lastName());
 ```
 
+## 属性过滤器（Property Filters）
+
+属性过滤器用于在抓取关联集合时对子元素进行**过滤和限制**，这是处理大量关联数据的重要工具。
+
+### 基本用法
+
+```java
+// 只抓取启用状态的用户
+Fetcher<Department> fetcher = DepartmentFetcher.$
+    .name()
+    .employees(
+        EmployeeFetcher.$.firstName().lastName(),
+        filter -> filter.status().eq(Status.ACTIVE)  // 过滤条件
+    );
+```
+
+### 限制数量（Limit）
+
+```java
+// 每个部门只抓取前5名员工
+Fetcher<Department> fetcher = DepartmentFetcher.$
+    .name()
+    .employees(
+        EmployeeFetcher.$.firstName().lastName(),
+        filter -> filter.limit(5)  // 限制数量
+    );
+```
+
+### 过滤 + 限制组合
+
+```java
+// 抓取每个部门中工资最高的前3名正式员工
+Fetcher<Department> fetcher = DepartmentFetcher.$
+    .name()
+    .employees(
+        EmployeeFetcher.$.firstName().lastName().salary(),
+        filter -> filter
+            .employeeType().eq(EmployeeType.FULL_TIME)  // 过滤正式员工
+            .orderBy(SalaryTable.$.amount.desc())          // 按工资降序
+            .limit(3)                                       // 取前3名
+    );
+```
+
+### Kotlin 语法
+
+```kotlin
+val fetcher = DepartmentFetcher {
+    name()
+    employees({
+        firstName()
+        lastName()
+    }, filter = {
+        status() eq Status.ACTIVE
+        limit(10)
+    })
+}
+```
+
+### ⚠️ 重要注意事项
+
+1. **性能影响**：属性过滤器在数据库层面执行过滤，但如果关联数据量巨大，仍可能影响性能
+
+2. **内存控制**：配合 `limit()` 使用可以有效控制内存占用
+
+3. **与 Fetcher 的区别**：
+   - Fetcher：决定**返回什么字段**
+   - Property Filter：决定**返回哪些记录**
+
+4. **排序限制**：在使用 `limit()` 时，建议同时指定排序，否则返回的结果可能不确定
+
+### 典型应用场景
+
+| 场景 | 解决方案 |
+|------|----------|
+| 用户消息列表只显示最新10条 | `filter -> filter.limit(10).orderBy(...desc())` |
+| 只显示启用状态的数据 | `filter -> filter.status().eq(Status.ACTIVE)` |
+| 动态过滤（根据权限） | 在 filter lambda 中加入条件判断 |
+| 分页加载大量关联数据 | 配合 `limit()` 和 `offset()` 实现 |
+
 ## 递归抓取（自关联）
 
 ```java
