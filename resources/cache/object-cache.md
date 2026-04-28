@@ -98,7 +98,7 @@ List<Book> books = sqlClient
 
 ## 缓存一致性
 
-要启用自动缓存一致性，必须先启用[触发器](../../mutation/trigger.md)。
+要启用自动缓存一致性，必须先启用[触发器](../save/save-command.md)。
 
 修改数据后，Jimmer 自动删除缓存中对应的数据：
 

@@ -123,6 +123,7 @@ public class BookService {
     
     // 3. 动态查询
     public List<Book> search(String name, BigDecimal minPrice) {
+        BookTable table = BookTable.$;
         return sqlClient
             .createQuery(table)
             .whereIf(
@@ -244,6 +245,6 @@ public class BookService {
 
 ## 下一步
 
-- 深入学习 [对象抓取器](../api/fetcher.md)
-- 了解 [保存指令详解](../mutation/save-command.md)
+- 深入学习 [对象抓取器](../query/fetcher.md)
+- 了解 [保存指令详解](../save/save-command.md)
 - 查看 [动态 JOIN](../query/dynamic-join.md)

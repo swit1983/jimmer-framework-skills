@@ -150,7 +150,7 @@ List<Book> books = sqlClient
 
 ## 缓存一致性
 
-要使用自动一致性，必须启用[触发器](../../mutation/trigger.md)。
+要使用自动一致性，必须启用[触发器](../save/save-command.md)。
 
 Jimmer 自动维护一致性：
 

@@ -112,8 +112,10 @@ Fetcher<Book> fetcher = BookFetcher.$.allScalarFields();
 ### allTableFields() - 所有表字段
 
 ```java
-// 抓取所有表字段（包括外键）
+// 抓取所有表字段：包含 allScalarFields + 基于外键的一对一/多对一属性（仅 id）
+// 不包含：一对多、多对多、基于中间表的关联、计算属性、视图属性
 Fetcher<Book> fetcher = BookFetcher.$.allTableFields();
+// 等价于：id, name, edition, price, store(仅id)
 ```
 
 ## 关联属性抓取
@@ -152,10 +154,10 @@ List<Book> books = sqlClient
     .where(table.name().eq("GraphQL in Action"))
     .select(
         table.fetch(
-            BookFetcher
+            BookFetcher.$
                 .allScalarFields()
                 .authors(
-                    AuthorFetcher.allScalarFields(),
+                    AuthorFetcher.$.allScalarFields(),
                     cfg -> cfg.filter(args -> {
                         AuthorTable author = args.getTable();
                         args.where(
@@ -249,18 +251,39 @@ List<BookDetailView> books = sqlClient
 
 ## 递归抓取（自关联）
 
+对于自关联实体，Jimmer 自动生成递归抓取方法（Java：`recursiveXxx()`，Kotlin：`属性名*`）：
+
 ```java
-// 部门层级：递归抓取所有子部门
-Fetcher<Department> fetcher = DepartmentFetcher.$
+// 部门层级：递归抓取所有子部门（最大深度5）
+Fetcher<Department> fetcher = Fetchers.DEPARTMENT_FETCHER
     .name()
-    .recursive(Department::subDepartments, 5);  // 最大深度5
+    .recursiveChildDepartments(it -> it.depth(5));  // 最大深度5
 
 // 评论树：无限深度递归
 Fetcher<Comment> fetcher = CommentFetcher.$
     .content()
     .author(UserFetcher.$.name())
-    .recursive(Comment::replies);  // 不指定深度，无限递归
+    .recursiveReplies();  // 不指定深度，无限递归
 ```
+
+```kotlin
+// 部门层级
+val fetcher = newFetcher(Department::class).by {
+    name()
+    `childDepartments*` {
+        depth(5)
+    }
+}
+
+// 评论树
+val fetcher = newFetcher(Comment::class).by {
+    content()
+    author { name() }
+    `replies*`()
+}
+```
+
+详细用法参见[递归查询](recursive-fetch.md)。
 
 ## vs GraphQL
 

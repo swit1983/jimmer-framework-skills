@@ -4,9 +4,9 @@
 
 ### @Entity
 
-`@Entity 注解用于修饰不可变接口，表示一个 ORM 实体。
+`@Entity` 注解用于修饰不可变接口，表示一个 ORM 实体。
 
-**为什么实体是接口不是类？
+**为什么实体是接口不是类？**
 
 Jimmer 实体具备动态性和不可变性，并非简单的 POJO，内部有精巧的运作机制，无法靠开发人员手工编写或 lombok 辅助完成。所以，Jimmer 让开发人员编写接口，由预编译器（Java: Annotation Processor, Kotlin: KSP）在编译时实现这些接口。
 
@@ -86,7 +86,7 @@ public interface Book {
 |------|------|
 | `GenerationType.IDENTITY` | 数据库自动编号 |
 | `GenerationType.SEQUENCE` | 数据库序列 |
-| UUID | `generatorType = UUIDIdGenerator.class |
+| UUID | `@GeneratedValue(generatorType = UUIDIdGenerator.class)` |
 | 自定义 | 实现 `UserIdGenerator<T>` |
 
 示例：
@@ -102,7 +102,7 @@ long id();
 @GeneratedValue(generatorType = UUIDIdGenerator.class)
 UUID id();
 
-// 自定义（如雪花ID
+// 自定义（如雪花ID）
 @Id
 @GeneratedValue(generateType = MyIdGenerator.class)
 Long id();
@@ -121,6 +121,6 @@ public class MyIdGenerator implements UserIdGenerator<Long> {
 ```
 
 更多内容：
-- [关联映射 → association.md
+- [关联映射](./one-to-many.md)
 - 命名策略 → naming-strategy.md
 - 可空性 → nullity.md

@@ -43,26 +43,32 @@ interface Book {
 | 类型 | 已删除值 | 未删除值 |
 |------|---------|---------|
 | `boolean` | `true` | `false` |
-| `int` | 非零 | 0 |
-| `long` | 非零 | 0 |
-| `String` | 非空字符串 | `null` |
-| `UUID` | 非空 | `null` |
-| 枚举 | 非空 | `null` |
+| `int` | 指定值（如 `1`） | 指定值（如 `0`） |
+| `long` | 当前时钟毫秒数 | `0L` |
+| `Long`（可空） | 当前时钟毫秒数 | `null` |
+| `UUID` | 随机 UUID | 所有字节为 0 的 UUID |
+| `UUID`（可空） | 随机 UUID | `null` |
+| 枚举 | 指定枚举值（如 `DELETED`） | 指定枚举值（如 `INITIALIZED`） |
+| `LocalDateTime`（可空） | 当前时间 | `null` |
+
+> 对于 `long`、`UUID` 等类型的已删除值，默认生成行为可自定义，实现 `LogicalDeletedValueGenerator<T>` 接口。
 
 ### 自定义已删除值
 
 ```java
 // 使用 int 类型，已删除 = 1，未删除 = 0
+@Default("0")
 @LogicalDeleted("1")
-int deleted();
-
-// 使用 String 类型
-@LogicalDeleted("'Y'")
-String deleted();
+int state();
 
 // 使用枚举
+@Default("INITIALIZED")
 @LogicalDeleted("DELETED")
 Status status();
+
+// 使用 long 类型（自动生成当前毫秒数）
+@LogicalDeleted
+long deletedMillis();
 ```
 
 ## 中间表逻辑删除
@@ -77,29 +83,7 @@ Status status();
 
 ### 配置方式
 
-**1. 中间表实体定义**
-
-```java
-@Entity
-@Table(name = "BOOK_AUTHOR_MAPPING")
-public interface BookAuthorMapping {
-    
-    @Id
-    @Column(name = "BOOK_ID")
-    long bookId();
-    
-    @Id
-    @Column(name = "AUTHOR_ID")
-    long authorId();
-    
-    // 中间表的逻辑删除标记！
-    @LogicalDeleted("true")
-    @Column(name = "DELETED")
-    boolean deleted();
-}
-```
-
-**2. 关联映射中使用中间表实体**
+中间表逻辑删除通过 `@JoinTable` 的 `logicalDeletedFilter` 属性配置：
 
 ```java
 @Entity
@@ -108,51 +92,33 @@ public interface Book {
     @ManyToMany
     @JoinTable(
         name = "BOOK_AUTHOR_MAPPING",
-        joinColumns = @JoinColumn(name = "BOOK_ID"),
-        inverseJoinColumns = @JoinColumn(name = "AUTHOR_ID")
+        joinColumnName = "BOOK_ID",
+        inverseJoinColumnName = "AUTHOR_ID",
+        logicalDeletedFilter = @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED",
+            type = boolean.class,
+            value = "true"
+        )
     )
     List<Author> authors();
-    
-    // 使用中间表实体定义关联
-    @ManyToMany(mappedBy = "book")
-    List<BookAuthorMapping> authorMappings();
-}
-
-@Entity
-public interface Author {
-    
-    @ManyToMany(mappedBy = "authors")
-    List<Book> books();
-    
-    @OneToMany(mappedBy = "author")
-    List<BookAuthorMapping> bookMappings();
-}
-
-@Entity
-public interface BookAuthorMapping {
-    
-    @Id
-    @ManyToOne
-    @JoinColumn(name = "BOOK_ID")
-    Book book();
-    
-    @Id
-    @ManyToOne
-    @JoinColumn(name = "AUTHOR_ID")
-    Author author();
-    
-    @LogicalDeleted("true")
-    boolean deleted();
 }
 ```
 
-### 关键区别
+### 支持的类型
 
-| 场景 | 实体表逻辑删除 | 中间表逻辑删除 |
-|------|---------------|---------------|
-| 注解位置 | 实体本身的字段 | 中间表实体/关联实体 |
-| 影响范围 | 实体本身是否可见 | 关联关系是否有效 |
-| 查询行为 | 自动过滤已删除 | 通过关联过滤 |
+中间表逻辑删除的类型与实体表类似，都通过 `@JoinTable.LogicalDeletedFilter` 配置：
+
+| 类型 | 示例配置 |
+|------|---------|
+| `boolean` | `type = boolean.class, value = "true"` |
+| `int` | `type = int.class, value = "1", initializedValue = "0"` |
+| `long` | `type = long.class`（自动生成当前毫秒数） |
+| `UUID` | `type = UUID.class`（自动生成随机 UUID） |
+
+> 如果实体被逻辑删除，相关中间表记录的处理方式取决于配置：
+> - 如果 `@JoinTable` 的 `logicalDeletedFilter` 被指定，相关中间表记录会被逻辑删除
+> - 如果 `@JoinTable` 的 `deletedWhenEndpointIsLogicallyDeleted = true`，相关中间表记录会被物理删除
+> - 否则，相关中间表记录不会被做任何处理
 
 ## 全局过滤器
 

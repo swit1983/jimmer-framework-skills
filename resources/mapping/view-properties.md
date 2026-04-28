@@ -93,42 +93,11 @@ interface Book {
 
 ## @ManyToManyView - 多对多简化
 
-对于多对多关联，当只需要通过中间表获取关联对象时，可以用 `@ManyToManyView` 简化配置。
-
-### 传统方式
-
-```java
-@Entity
-public interface Book {
-    @ManyToMany
-    @JoinTable(name = "BOOK_AUTHOR_MAPPING")
-    List<Author> authors();
-}
-
-@Entity
-public interface Author {
-    @ManyToMany(mappedBy = "authors")
-    List<Book> books();
-}
-```
+当多对多中间表有业务字段时，需要将中间表建模为独立实体。但很多时候上层业务只关心两端实体的直接关联，`@ManyToManyView` 可以在这种情况下模拟出简洁的多对多关联效果。
 
 ### 使用 @ManyToManyView
 
-当 `Author` 只通过 `BOOK_AUTHOR_MAPPING` 表与 `Book` 关联，且没有其他属性时：
-
-```java
-@Entity
-public interface Author {
-    // 无需定义中间表实体，直接通过视图属性获取
-    @ManyToManyView(
-        prop = "books",           // Book 中的关联属性名
-        deeperProp = "authors"    // 可选：更深层的关联
-    )
-    List<Book> books();
-}
-```
-
-实际上，更常见的用法是配合中间表实体：
+首先，定义基础关联（中间表实体 + 双向一对多）：
 
 ```java
 @Entity
@@ -137,12 +106,12 @@ public interface BookAuthorMapping {
     @ManyToOne
     @JoinColumn(name = "BOOK_ID")
     Book book();
-    
+
     @Id
     @ManyToOne
     @JoinColumn(name = "AUTHOR_ID")
     Author author();
-    
+
     // 中间表特有字段
     int order();
 }
@@ -151,12 +120,30 @@ public interface BookAuthorMapping {
 public interface Book {
     @OneToMany(mappedBy = "book")
     List<BookAuthorMapping> authorMappings();
-    
+}
+
+@Entity
+public interface Author {
+    @OneToMany(mappedBy = "author")
+    List<BookAuthorMapping> bookMappings();
+}
+```
+
+然后，用 `@ManyToManyView` 在此基础上模拟多对多关联：
+
+```java
+@Entity
+public interface Book {
+    @OneToMany(mappedBy = "book")
+    List<BookAuthorMapping> authorMappings();
+
     // 视图属性：直接获取关联的作者
     @ManyToManyView(prop = "authorMappings", deeperProp = "author")
     List<Author> authors();
 }
 ```
+
+`prop` 指向当前实体的一对多属性，`deeperProp` 指向中间表实体指向目标实体的多对一属性。
 
 ```kotlin
 @Entity
@@ -179,5 +166,5 @@ interface Book {
 ## 使用建议
 
 1. **优先使用 `@IdView`**：当只需要关联对象 ID 时，避免加载完整对象
-2. **`@ManyToManyView` 按需使用**：当多对多关联简单且中间表无业务字段时，可简化配置
-3. **复杂多对多**：如果中间表有其他字段或业务逻辑，建议使用显式的中间表实体
+2. **`@ManyToManyView` 按需使用**：当中间表有业务字段导致无法使用简单多对多映射时，可用此注解模拟多对多效果
+3. **简单多对多**：如果中间表无业务字段，直接使用 `@ManyToMany` + `@JoinTable` 即可

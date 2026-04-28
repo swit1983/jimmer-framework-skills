@@ -174,7 +174,6 @@ Book savedWild = sqlClient
 | `insert(entity)` | `save(entity, SaveMode.INSERT_ONLY)` | 强制 INSERT |
 | `update(entity)` | `save(entity, SaveMode.UPDATE_ONLY)` | 强制 UPDATE |
 | `insertIfAbsent(entity)` | `save(entity, SaveMode.INSERT_IF_ABSENT)` | 不存在才 INSERT |
-| `upsert(entity)` | `save(entity, SaveMode.UPSERT)` | 同 save |
 
 ## 关联保存模式
 
@@ -760,7 +759,7 @@ public Book saveBookWithDetails(BookInput input) {
     
     return sqlClient
         .saveCommand(book)
-        .setMode(SaveMode.AUTO)
+        .setMode(SaveMode.UPSERT)
         .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.MERGE)
         .setDissociateAction(BookProps.AUTHORS, DissociateAction.SET_NULL)
         .execute()

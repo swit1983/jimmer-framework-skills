@@ -26,10 +26,13 @@
 
 | 策略 | 说明 | 适用场景 |
 |------|------|---------|
-| `NONE` | 默认，不允许脱钩，尝试脱钩会报错 | 强制关联必须存在 |
-| `DELETE` | 脱钩时删除关联对象 | 级联删除 |
+| `NONE`（默认） | 视全局配置和外键真假而定，等价于 `CHECK` 或 `LAX` | 取决于配置 |
+| `LAX` | 不执行任何动作，由数据库级联行为处理（真外键）或放任悬挂（假外键） | 数据库已有级联配置 |
+| `CHECK` | 不允许脱钩，如有需要脱钩的子对象则抛出异常 | 强制关联必须存在 |
 | `SET_NULL` | 脱钩时将外键设为 NULL | 可选关联，允许为空 |
-| `SET_DEFAULT` | 脱钩时将外键设为默认值 | 有默认值的场景 |
+| `DELETE` | 脱钩时删除关联对象 | 级联删除 |
+
+> ⚠️ `@OnDissociate` **只能用在基于外键映射的多对一关联上**，不能用于一对多关联。虽然脱钩由一对多关联导致，但配置针对逆向的多对一关联，保持与数据库 DDL 外键级联配置的相似性。
 
 ## 使用示例
 
@@ -73,32 +76,33 @@ interface Book {
 
 ### DELETE - 级联删除
 
-删除订单时，同时删除所有订单项：
+删除书店时，同时删除所有关联的书籍（配置在 `Book.store` 上的多对一关联）：
 
 ```java
 @Entity
-public interface Order {
+public interface BookStore {
     @Id
     long id();
     
     // 一对多关联
-    @OneToMany(mappedBy = "order")
-    @OnDissociate(DissociateAction.DELETE)  // 脱钩时删除子对象
-    List<OrderItem> items();
+    @OneToMany(mappedBy = "store")
+    List<Book> books();
 }
 
 @Entity
-public interface OrderItem {
+public interface Book {
     @Id
     long id();
     
+    // 多对一关联，@OnDissociate 配置在这里！
     @ManyToOne
-    @JoinColumn(name = "ORDER_ID")
-    Order order();
+    @JoinColumn(name = "STORE_ID")
+    @OnDissociate(DissociateAction.DELETE)  // 脱钩时删除子对象
+    BookStore store();
 }
 ```
 
-### NONE - 强制关联
+### CHECK - 强制关联
 
 不允许解除关联，必须显式处理：
 
@@ -111,7 +115,7 @@ public interface Employee {
     // 每个员工必须属于一个部门，不允许脱钩
     @ManyToOne
     @JoinColumn(name = "DEPT_ID", nullable = false)
-    @OnDissociate(DissociateAction.NONE)  // 默认，显式声明
+    @OnDissociate(DissociateAction.CHECK)  // 有子对象需要脱钩时抛异常
     Department department();
 }
 ```
@@ -154,7 +158,7 @@ sqlClient.save(BookDraft.$.produce(book -> {
 
 | 注意点 | 说明 |
 |--------|------|
+| 配置位置 | `@OnDissociate` 只能用在多对一关联上，不能用于一对多 |
 | 外键约束 | `SET_NULL` 要求外键列可为空 |
-| 级联深度 | `DELETE` 只会删除直接关联对象，不会级联更深 |
-| 性能影响 | 大量脱钩操作可能影响性能，考虑批量处理 |
+| 动态覆盖 | 运行时可通过 save/delete 命令的 API 覆盖静态配置 |
 | 与缓存关系 | 脱钩操作会自动触发相关缓存失效 |

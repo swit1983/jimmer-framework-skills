@@ -36,16 +36,16 @@
 
 | 文档 | 内容 |
 |------|------|
-| [保存指令详解](./mutation/save-command.md) | `save` 指令、保存模式、关联保存、脱钩 |
-| [Input DTO](./mutation/input-dto.md) | 前后端数据传输、空值处理 |
+| [保存指令详解](./save/save-command.md) | `save` 指令、保存模式、关联保存、脱钩 |
+| [Input DTO](./dto/input-dto.md) | 前后端数据传输、空值处理 |
 
 ## 🔧 API 参考 (API)
 
 | 文档 | 内容 |
 |------|------|
-| [对象抓取器 Fetcher](./api/fetcher.md) | 按需抓取任意形状的数据结构 |
-| [保存指令 SaveCommand](./api/save-command.md) | 保存配置的详细说明 |
-| [DTO 语言](./api/dto-language.md) | Input/View DTO 定义语法 |
+| [对象抓取器 Fetcher](./query/fetcher.md) | 按需抓取任意形状的数据结构 |
+| [保存指令 SaveCommand](./save/save-command.md) | 保存配置的详细说明 |
+| [DTO 语言](./dto/dto-language.md) | Input/View DTO 定义语法 |
 
 ## ⚡ 缓存 (Cache)
 
@@ -60,7 +60,6 @@
 | 文档 | 内容 |
 |------|------|
 | [Spring Data Repository](./spring/repository.md) | JRepository 使用 |
-| [事务管理](./spring/transaction.md) | @Transactional 使用建议 |
 
 ---
 
@@ -69,12 +68,12 @@
 ### 新手入门路径
 1. [快速开始](./guides/quick-start.md) - 先跑通第一个程序
 2. [基础映射](./mapping/basic-mapping.md) - 学习实体定义
-3. [对象抓取器](./api/fetcher.md) - 掌握查询核心
-4. [保存指令详解](./mutation/save-command.md) - 掌握保存核心
+3. [对象抓取器](./query/fetcher.md) - 掌握查询核心
+4. [保存指令详解](./save/save-command.md) - 掌握保存核心
 
 ### 常见问题解决
 - 关联查询慢 → [动态 JOIN](./query/dynamic-join.md)
 - 分页性能差 → [智能分页](./query/paging.md)
 - 树形结构 → [递归查询](./query/recursive-fetch.md)
-- 前后端数据不一致 → [Input DTO](./mutation/input-dto.md)
+- 前后端数据不一致 → [Input DTO](./dto/input-dto.md)
 - 数据权限控制 → [全局过滤器](./query/global-filter.md)

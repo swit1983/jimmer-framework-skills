@@ -102,7 +102,7 @@ Book anotherEntity = dto.toEntity();   // DTO -> 实体
 
 - 不提供与实体互转的能力
 - 所有属性默认可 null
-- 用于支持[超级 QBE 查询](../../query/super_qbe)
+- 用于支持超级 QBE 查询
 
 ## 4. 简单属性
 
@@ -463,5 +463,4 @@ BookView implements Shape1<String>, Shape2 {
 
 ## 14. 相关链接
 
-- [在 Input DTO 中处理空值](../../api/save-command.md)
-- [超级 QBE 查询](../../query/super_qbe.md)
+- [在 Input DTO 中处理空值](../save/save-command.md)

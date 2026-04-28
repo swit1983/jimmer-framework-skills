@@ -177,7 +177,8 @@ public interface Book {
 ```java
 @Entity
 public interface Book {
-    @ManyToNull  // ✅ 必须为 Nullable
+    @ManyToOne
+    @Nullable  // ✅ 必须为 Nullable
     BookStore store();
 }
 ```
