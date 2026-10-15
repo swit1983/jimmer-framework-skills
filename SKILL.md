@@ -1,4 +1,9 @@
-# jimmer-framework
+---
+name: jimmer-framework-skills
+description: Jimmer ORM 开发辅助。含官方中文文档完整本地镜像（231 页，已清洗）、经 v0.12.4 源码逐项校验的快速参考与勘误清单、可直接套用的 Java/Kotlin 示例。当用户提到 Jimmer / Jimmer ORM，或需要编写、调试、排错实体映射、SQL DSL 查询、Fetcher 对象抓取、SaveCommand 保存指令、Input/View DTO 与 DTO 语言、三级缓存、全局过滤器、Spring Data 集成时使用此 skill。
+---
+
+# jimmer-framework-skills
 
 Jimmer ORM 开发辅助 Skill。包含**完整本地化的官方中文文档**、**经源码校验的快速参考**与**示例代码**。
 
@@ -156,3 +161,52 @@ jimmer-framework-skills/
 | Fetcher | `org.babyfish.jimmer.sql.fetcher` |
 | Specification（超级 QBE） | `org.babyfish.jimmer.Specification` |
 | Spring 仓储 | `org.babyfish.jimmer.spring.repository.JRepository` |
+
+
+## Jimmer ORM 实践要点
+
+### 结构与生成物
+
+- 实体是不可变接口，Draft、Immutables 工厂、View、Specification、Props 全部由 `jimmer-apt` 注解处理器在编译期生成到 `target/generated-sources/annotations`。
+- 判断某个 View/Specification/Draft 是否存在：先看源码里对应的 `.dto` 文件定义，再编译确认生成物；不要凭空 import 或手写这些类。
+- 修改实体或 `.dto` 后必须重新编译（让 apt 重新生成），再做依赖该模块的其他模块编译；多模块项目里只编译下游模块在生成类缺失时会报“找不到符号”，这是正常现象。
+- 实体加字段后，若接口需要返回它，必须同步在 `.dto` 的对应 View 中显式加上该属性——View 是白名单式取数，不会自动带出新字段。
+
+### 实体定义
+
+- 主键用 `@Id` + ID 生成器（如 `@GeneratedValue(generatorType = ...)`），避免依赖数据库自增与业务代码手工赋号混用。
+- `@Column` 注解没有 `length` 属性，列长度/精度只在 DDL 中定义；实体与迁移脚本要同步修改。
+- 长整型 ID 直接序列化给 JS 前端会丢精度，对外暴露的实体/View 需配置 Long→String 转换（如 `@JsonConverter(LongToStringConverter.class)`）。
+- 审计字段（创建/更新时间、操作人）和多租户字段优先用 `@MappedSuperclass` 抽象 + `DraftInterceptor` 自动填充，业务代码不要手工 set。
+
+### 保存
+
+- append-only 记录表用 `SaveMode.INSERT_ONLY`，防止意外改写历史。
+- 聚合根整树保存（父+子集合）用 `saveCommand(root).setMode(NON_IDEMPOTENT_UPSERT).setAssociatedModeAll(AssociatedSaveMode.MERGE)`。
+- 按“业务唯一键”upsert：在实体业务键属性上标 `@Key`，保存命令 `.setKeyProps(XxxProps.BUSINESS_KEY)`；或先精确查询存在性，再决定 INSERT_ONLY 还是带 id 的 UPSERT。
+- 部分字段更新优先 `sql.createUpdate(...).set(...).where(...)`，不要查出整实体、改两个字段再整棵 save，避免覆盖并发修改。
+- 数据库唯一索引**不要包含可空列**（MySQL 中 NULL 不参与唯一性去重，重复插入不会报冲突）。用哨兵值表示“通配/全部”（如 -1 或 0），并把哨兵值写入唯一键。
+- Draft 顶层构造推荐 `Immutables.createXxx(draft -> ...)`（返回实体类型）；`XxxDraft.$.produce(...)` 也可，注意其返回类型是 Draft。
+
+### Draft lambda 编译坑
+
+- `produce(d -> ...)` / `createXxx(d -> ...)` 的 lambda 只能捕获 effectively final 的局部变量；变量在 lambda 之前被重新赋值过（如“查不到就初始化”模式），必须先赋给一个 `final` 局部变量再进 lambda。
+- lambda 内引用的可变集合/对象本身可以，引用被重新赋值的**变量**不行。
+
+### 查询
+
+- `allScalarFields()` 只取标量属性，**不包含关联**。拿到实体后直接导航 `entity.assoc().prop()` 前必须确认该关联已被 fetch，否则 NPE；带关联查询要在 Fetcher 链上显式加 `.assoc(...)`。
+- 列表/分页带动态条件优先用 Specification（`.dto` 中 `specification XxxSpecification` 定义），仓库用 `findList/findPage(specification, ViewType, "排序串")`；Web 层可直接用 Specification 类型接查询参数自动绑定。
+- `.fetch(ViewType.class)` 返回的是 View 对象（不可再导航关联），需要继续导航就用 Fetcher 查实体。
+- 分页对象是 `Page<T>`；`fetchPage(index, size)` 的 index 从 0 开始。
+
+### 多租户/上下文类字段（若项目启用）
+
+- 由 DraftInterceptor 填充的租户/操作人字段，依赖 ThreadLocal 上下文。Web 请求由拦截器设置；**异步线程、定时任务、消息消费者必须自行设置上下文**，并在 finally 中清理，否则保存时抛异常或静默填错。
+- 排查“保存时租户为空”类报错，先看当前线程是否设过上下文，而不是看实体赋值代码。
+
+### 排错习惯
+
+- 编译错误“找不到符号 XxxDraft/XxxView/XxxSpecification”：九成是 `.dto` 没定义或没重新编译生成，先查 dto 文件再编译。
+- 运行时“字段未加载”（UnloadedException）：访问了未 fetch 的属性，回查询处补 Fetcher 或改用 View。
+- 唯一键冲突/该冲突却没报：检查唯一索引是否含 NULL 列。
