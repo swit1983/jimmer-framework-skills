@@ -9,6 +9,7 @@
 | [快速开始](./guides/quick-start.md) | 5 分钟上手指南，包含完整 CRUD 示例 |
 | [最佳实践](./guides/best-practices.md) | 推荐代码组织方式、Repository 模式、Service 设计 |
 | [常见陷阱](./guides/common-pitfalls.md) | 易错点和解决方案检查清单 |
+| [⚠️ 文档勘误](./guides/errata.md) | **优先阅读**：官方文档中不存在的 API、误写的注解与正确替代写法 |
 
 ## 🗺️ 实体映射 (Mapping)
 

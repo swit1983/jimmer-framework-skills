@@ -1,8 +1,10 @@
 ---
-title: '4. 条件'
+title: 4. 条件
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/where
 ---
-
 
 # 4. 条件
 
-[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/showcase/where/index.md)最后 于 **2025年9月16日**  更新
+> ⚠️ 该页面在官方文档中尚未编写内容（仓库中英文源均为空占位）。
+>
+> 官方页面地址：<https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/where>

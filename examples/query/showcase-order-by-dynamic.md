@@ -1,9 +1,9 @@
 # 5.2 动态排序
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/order-by/dynamic
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/order-by/dynamic
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [5. 排序](/zh/docs/showcase/order-by/)
+* [案例展示 ★](../../docs/showcase.md)
+* [5. 排序](../../docs/showcase/order-by.md)
 * 5.2 动态排序
 
 本页总览

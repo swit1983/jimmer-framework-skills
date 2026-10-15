@@ -1,8 +1,8 @@
 # 9. Update语句
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/update-statement
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/update-statement
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * 9. Update语句
 
 # 9. Update语句

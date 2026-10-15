@@ -1,9 +1,9 @@
 # 3.4 多属性递归
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/recursive-query/multiple-props
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/recursive-query/multiple-props
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [3. 递归查询](/zh/docs/showcase/recursive-query/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [3. 递归查询](../../../docs/showcase/recursive-query.md)
 * 3.4 多属性递归
 
 本页总览

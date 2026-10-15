@@ -1,0 +1,103 @@
+---
+title: Upsert Mask
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/mutation/save-command/upsert-mask
+---
+
+# Upsert Mask
+
+被保存对象的已加载形状决定哪些值可用。`UpsertMask`进一步限制upsert时哪些属性允许插入、
+哪些属性允许更新。例如，完整的输入书籍可以提供所有插入值，但冲突时只允许更新价格。
+
+## 选择可更新属性
+
+**Java**
+
+```java
+sqlClient
+    .saveCommand(book)
+    .setUpsertMask(BookProps.PRICE)
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+sqlClient.save(book) {
+    setUpsertMask(Book::price)
+}
+```
+
+插入时仍然使用正常的已加载值。冲突时，普通更新属性集合是已加载形状与mask的交集，并排除
+冲突id或key。Mask不会加载缺失的值。
+
+Mask同样约束公开的[保存赋值表达式](./assignment.md)的目标。为对象形状或mask没有选中的目标
+配置自定义表达式会报错。
+
+## 不更新对象属性
+
+**Java**
+
+```java
+sqlClient
+    .saveCommand(book)
+    .forbidUpdate()
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+sqlClient.save(book) {
+    forbidUpdate()
+}
+```
+
+`forbidUpdate()`让upsert更新分支不选择任何实体属性赋值。向便捷形式的`setUpsertMask(...)`
+重载显式传入空数组，含义相同。
+
+这不会把操作改成`INSERT_IF_ABSENT`：已有对象仍然可以被接受并保存其关联。如果不需要执行
+SQL更新，对象可以被接受，而其自身表的影响行数为零。方言仍可能为了获取id、返回数据行或保持
+其他保存语义而执行自赋值SQL，这样的SQL可能触发数据库触发器。有效的`setUpdateWhere`仍然
+决定是否接受匹配分支。
+
+接受状态和空更新mask都不保证锁定已有行。并发契约请参阅[保存模式](./save-mode.md#控制upsert的更新)。
+如果希望拒绝发生冲突的根对象，请使用`INSERT_IF_ABSENT`。
+
+## 配置两个分支
+
+插入和更新需要不同的属性集合时，使用`UpsertMask`对象：
+
+**Java**
+
+```java
+UpsertMask<Book> mask = UpsertMask.of(Book.class)
+    .addInsertableProp(BookProps.NAME)
+    .addInsertableProp(BookProps.EDITION)
+    .addInsertableProp(BookProps.PRICE)
+    .addUpdatableProp(BookProps.PRICE);
+
+sqlClient.saveCommand(book).setUpsertMask(mask).execute();
+```
+
+**Kotlin**
+
+```kotlin
+val mask = UpsertMask.of(Book::class.java)
+    .addInsertableProp(Book::name)
+    .addInsertableProp(Book::edition)
+    .addInsertableProp(Book::price)
+    .addUpdatableProp(Book::price)
+
+sqlClient.save(book) {
+    setUpsertMask(mask)
+}
+```
+
+每个分支在未配置属性列表前都不受限制。`addInsertablePath`和`addUpdatablePath`可以选择嵌入
+对象的单个成员。Mask构建方法返回新的mask，应保留返回值或链式调用。
+
+`forbidInsert()`从空的插入属性列表开始，并不是禁用插入分支。可以在之后添加需要插入的属性。
+冲突列以及框架必需的列仍然会提供，省略的列在可用时使用数据库默认值。缺少没有默认值的必填值
+仍然会导致正常的数据库错误。
+
+Mask选择的是赋值，它不能替代[保存模式](./save-mode.md)、[更新条件](./update-where.md)或[版本模式](./version-mode.md)。

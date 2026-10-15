@@ -1,9 +1,9 @@
 # 3.2 控制节点是否递归
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/recursive-query/node-control
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/recursive-query/node-control
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [3. 递归查询](/zh/docs/showcase/recursive-query/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [3. 递归查询](../../../docs/showcase/recursive-query.md)
 * 3.2 控制节点是否递归
 
 本页总览

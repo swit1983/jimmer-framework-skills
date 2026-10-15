@@ -1,9 +1,9 @@
 # 2.4 连接抓取
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/fetch-association/join-fetch
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/fetch-association/join-fetch
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [2. 抓取关联](/zh/docs/showcase/fetch-association/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [2. 抓取关联](../../../docs/showcase/fetch-association.md)
 * 2.4 连接抓取
 
 本页总览

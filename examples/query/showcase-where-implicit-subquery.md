@@ -1,9 +1,9 @@
 # 4.5 隐式子查询
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/where/implicit-subquery
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/where/implicit-subquery
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [4. 条件](/zh/docs/showcase/where/)
+* [案例展示 ★](../../docs/showcase.md)
+* [4. 条件](../../docs/showcase/where.md)
 * 4.5 隐式子查询
 
 本页总览

@@ -82,4 +82,4 @@ public interface Author {
 ## 中间表添加业务字段
 
 如果需要在多对多中间表中定义其他业务字段（比如排序号、创建时间），请参考：
-[ManyToManyView →](../mapping/advanced/view/many-to-many-view.md)
+[ManyToManyView →](../../docs/mapping/advanced/view/many-to-many-view.md)

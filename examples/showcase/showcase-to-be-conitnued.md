@@ -1,13 +1,13 @@
 # X. 未完待续...
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/to-be-conitnued
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/to-be-conitnued
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * X. 未完待续...
 
 # X. 未完待续...
 
-最近几个月, [保存指令](/zh/docs/mutation/save-command/)在做超大重构，所以没写。
+最近几个月, [保存指令](../../docs/mutation/save-command.md)在做超大重构，所以没写。
 
 好消息是，这个Jimmer历史上最绝大的重构终于完成并稳定，所以，很快会补充这里的内容。
 

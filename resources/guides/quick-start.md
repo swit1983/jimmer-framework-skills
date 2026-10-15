@@ -10,14 +10,14 @@
 <dependency>
     <groupId>org.babyfish.jimmer</groupId>
     <artifactId>jimmer-spring-boot-starter</artifactId>
-    <version>0.8.0</version>
+    <version>0.12.4</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'org.babyfish.jimmer:jimmer-spring-boot-starter:0.8.0'
+implementation 'org.babyfish.jimmer:jimmer-spring-boot-starter:0.12.4'
 ```
 
 ## 2. 配置数据库

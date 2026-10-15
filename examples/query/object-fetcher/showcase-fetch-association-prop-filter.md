@@ -1,9 +1,9 @@
 # 2.5 属性过滤器
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/fetch-association/prop-filter
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/fetch-association/prop-filter
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [2. 抓取关联](/zh/docs/showcase/fetch-association/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [2. 抓取关联](../../../docs/showcase/fetch-association.md)
 * 2.5 属性过滤器
 
 本页总览

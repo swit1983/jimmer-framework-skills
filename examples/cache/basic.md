@@ -78,10 +78,26 @@ jimmer:
 @Entity
 public interface Book {
     // ...
-    @TenantId
+    // 租户标识就是普通标量属性，Jimmer 没有内置的 @TenantId 注解
     Long tenantId();
 }
 ```
 
-缓存自动按 tenant 隔离，不同租户看不到彼此数据。
+行级隔离由 `Filter` 负责（而非某个注解）：
+
+```java
+@Component
+public class TenantFilter implements Filter<Props> {
+
+    @Override
+    public void filter(FilterArgs<Props> args) {
+        Long tenantId = TenantContext.currentId();
+        if (tenantId != null) {
+            args.where(args.getTable().get("tenantId").eq(tenantId));
+        }
+    }
+}
+```
+
+> 多视角缓存会依据当前可见的过滤器集合分别建缓存，因此不同租户的数据天然隔离。
 

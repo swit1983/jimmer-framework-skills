@@ -120,7 +120,8 @@ public interface Book {
 ## 复合字段（Embedded）
 
 ```java
-@Embedded
+// 复合类型用 @Embeddable 声明（Jimmer 无 @Embedded 注解）
+@Embeddable
 public interface Address {
     String street();
     
@@ -136,7 +137,7 @@ public interface User {
     
     String name();
     
-    @Embedded
+    // 使用处无需额外注解
     Address address();
 }
 ```
@@ -162,7 +163,8 @@ public interface Book {
     @Id
     long id();
     
-    @Json
+    // JSON 列使用 @Serialized（Jimmer 无 @Json 注解）
+    @Serialized
     Map<String, Object> metadata();
 }
 ```

@@ -1,9 +1,9 @@
 # 4.3 关联id
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/where/associated-id
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/where/associated-id
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [4. 条件](/zh/docs/showcase/where/)
+* [案例展示 ★](../../docs/showcase.md)
+* [4. 条件](../../docs/showcase/where.md)
 * 4.3 关联id
 
 本页总览
@@ -38,7 +38,7 @@ val rootNodes = sqlClient
 提示
 
 上述代码中的`parentId`，是Jimmer在编译时根据多对一属性`TreeNode.parent`自动生成的，
-即使开发人员没有配套定义名称为`parentId`的[@IdView属性](/zh/docs/mapping/advanced/view/id-view)也仍然如此。
+即使开发人员没有配套定义名称为`parentId`的[@IdView属性](../../docs/mapping/advanced/view/id-view.md)也仍然如此。
 
 ## 任意值的判断[​](#任意值的判断 "任意值的判断的直接链接")
 

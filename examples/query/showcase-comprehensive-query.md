@@ -1,8 +1,8 @@
 # 7. 综合查询
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/comprehensive-query
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/comprehensive-query
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * 7. 综合查询
 
 本页总览
@@ -11,8 +11,8 @@
 
 截止到目前为止，我们快速展示了如下功能
 
-* 对象抓取器，也就是查询任意形状的数据结构，也就是[抓取关联](/zh/docs/showcase/fetch-association)和[递归查询](/zh/docs/showcase/recursive-query)中所展示的内容。
-* 条件，尤其是[动态表连接](/zh/docs/showcase/where/dynamic-join)和[隐式子查询](/zh/docs/showcase/where/implicit-subquery)
+* 对象抓取器，也就是查询任意形状的数据结构，也就是[抓取关联](../../docs/showcase/fetch-association.md)和[递归查询](../../docs/showcase/recursive-query.md)中所展示的内容。
+* 条件，尤其是[动态表连接](../../docs/showcase/where/dynamic-join.md)和[隐式子查询](../../docs/showcase/where/implicit-subquery.md)
 * 排序，包括动态排序
 * 分页查询
 

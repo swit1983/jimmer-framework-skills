@@ -1,6 +1,6 @@
 # Jimmer 常见易错点汇总
 
-> 本文档基于 [Jimmer 官方 FAQ](https://jimmer.deno.dev/zh/faq) 整理，汇总了最常见的问题和易错点。
+> 本文档基于 Jimmer 官方 FAQ 整理，并对照 `jimmer` 源码 **v0.12.4** 校正了全部 API 写法。
 
 ---
 
@@ -199,10 +199,16 @@ public interface Book {
 如果希望获取外键值但不想触发过滤器：
 
 ```java
+import org.babyfish.jimmer.sql.fetcher.IdOnlyFetchType;
+
+// RAW = 忽略目标实体上的过滤器（含内置逻辑删除过滤器），直接取外键值
 Fetcher<Book> fetcher = BookFetcher.$
     .name()
-    .store(IdOnlyFetcherType);  // 只获取 ID，不走过滤器
+    .add("store", IdOnlyFetchType.RAW);
 ```
+
+> `IdOnlyFetchType` 只有两个枚举值：`DEFAULT`（应用过滤器）、`RAW`（忽略过滤器）。
+> 源码位置：`org.babyfish.jimmer.sql.fetcher.IdOnlyFetchType`。
 
 ---
 
@@ -245,15 +251,23 @@ public interface Book {
 
 ```java
 // 只给想更新的属性赋值
-Book book = BookDraft.$.produce(draft -> 
+Book book = BookDraft.$.produce(draft ->
     draft.setId(1L).setName("Java入门")
 );
 
 // 这将执行：UPDATE book SET name = ? WHERE id = ?
-sqlClient.update(book);
+sqlClient.save(book);
+
+// 若确定只更新不新增，可显式限定模式
+sqlClient.saveCommand(book)
+    .setMode(SaveMode.UPDATE_ONLY)
+    .execute();
 ```
 
-**说明**：只更新 `name`，其他字段不会被修改。
+**说明**：只更新 `name`，其他未赋值（unloaded）的列不会被修改，Jimmer 正是靠这种"不完整对象"实现局部更新。
+
+> ⚠️ **勘误**：`JSqlClient` **没有** `update(entity)` 方法（0.12.4 源码中不存在，官方文档该处写法已过时）。
+> 局部更新统一使用 `save`，`SaveMode` 默认为 `UPSERT`。
 
 ---
 
@@ -449,15 +463,24 @@ List<Double> ranks = sqlClient
 
 ```java
 // null first
-.orderBy(table.name().nullFirst())
+.orderBy(table.name().nullsFirst())
 
 // null last
-.orderBy(table.name().nullLast())
+.orderBy(table.name().nullsLast())
 
-// 更复杂的自定义排序
+// 更复杂的自定义排序（原生 SQL 表达式）
 .orderBy(
-    Expression.sql("CASE WHEN name IS NULL THEN 0 ELSE 1 END")
+    Expression.numeric()
+        .sql(
+            Integer.class,
+            "CASE WHEN %e IS NULL THEN 0 ELSE 1 END",
+            table.name()
+        )
 )
+
+> ⚠️ `Expression` **没有**静态 `sql(...)` 方法。
+> 表达式请用 `Expression.numeric()/string()/comparable()` 工厂，
+> 条件请用 `Predicate.sql(...)`；占位符统一是 `%e`。
 ```
 
 ---
@@ -483,4 +506,8 @@ List<Double> ranks = sqlClient
 15. **原生 SQL** - 绑定多个值
 16. **排序控制** - null first/last
 
-**参考**：https://jimmer.deno.dev/zh/faq
+**参考**：https://github.com/babyfish-ct/jimmer-doc （官方问答/ FAQ 与教程源码仓库）
+
+> 📌 早期文档站 `https://jimmer.deno.dev/zh/docs`（域名已弃用）的内容已迁移，
+> 现官方中文文档地址为 <https://babyfish-ct.github.io/jimmer-doc/zh/docs/>；
+> 本 skill 的 `docs/` 目录就是它的完整本地镜像。

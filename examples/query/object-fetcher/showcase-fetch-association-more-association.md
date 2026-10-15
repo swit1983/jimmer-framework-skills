@@ -1,9 +1,9 @@
 # 2.2 更多关联
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/fetch-association/more-association
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/fetch-association/more-association
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [2. 抓取关联](/zh/docs/showcase/fetch-association/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [2. 抓取关联](../../../docs/showcase/fetch-association.md)
 * 2.2 更多关联
 
 本页总览

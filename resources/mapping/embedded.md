@@ -86,10 +86,10 @@ public interface Transition {
 ```java
 @Embeddable
 public interface UniqueId {
-    @ColumnName("UNIQUE_ID_DAY_NO")
+    @Column(name = "UNIQUE_ID_DAY_NO")
     int dayNo();
     
-    @ColumnName("UNIQUE_ID_SEQ_NO")
+    @Column(name = "UNIQUE_ID_SEQ_NO")
     int sequenceNo();
 }
 

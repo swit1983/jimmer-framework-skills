@@ -1,123 +1,560 @@
 ---
-title: '中间表'
+title: 中间表
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/mapping/advanced/logical-deleted/join-table
 ---
-# 中间表
 
+# 中间表
 
 想让中间表支持逻辑删除，需要为注解`org.babyfish.jimmer.sql.JoinTable`指定属性，以表示该数据是正常的还是已经被删除。
 
+-   一旦为中间表配置了逻辑删除属性，当任何一端的实体被逻辑删除时，所有相关的中间表记录将会被逻辑删除。
 
-- 一旦为中间表配置了逻辑删除属性，当任何一端的实体被逻辑删除时，所有相关的中间表记录将会被逻辑删除。
-- 所有针对当前关联的JOIN操作都会被自动加上` and 软删除标志 <> 已经被删除`的条件，从而营造出某些关联已经被删除的假象。
-
+-   所有针对当前关联的JOIN操作都会被自动加上` and 软删除标志 <> 已经被删除`的条件，从而营造出某些关联已经被删除的假象。
 
 ## 用法
 
-
 逻辑删除标志属性可以是如下类型之一
 
+-   boolean：必须非null
+-   int：必须非null
+-   枚举：必须非null
+-   long/Long：null或非null即可
+-   UUID: 必须非null
+-   日期：必须可null
 
-- boolean：必须非null
-- int：必须非null
-- 枚举：必须非null
-- long/Long：null或非null即可
-- UUID: 必须非null
-- 日期：必须可null
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>代码</th>
+<th>删除状态</th>
+<th>初始状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td rowspan="2">boolean</td>
+<td>
 
+**Java**
 
-| 类型 | 代码 | 删除状态 | 初始状态 |
-| --- | --- | --- | --- |
-| boolean | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED",type=boolean.class,value="true"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="DELETED",type=boolean.class,value="true"))valauthors:List<Author> | true | false |
-| JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="ACTIVE",type=boolean.class,value="false"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="ACTIVE",type=boolean.class,value="false"))valauthors:List<Author> | false | true |  |
-| int | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="STATE",type=int.class,value="1",initializedValue="0"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="STATE",type=int.class,value="1",initializedValue="0"))valauthors:List<Author> | 1 | 0 |
-| 枚举 | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="STATE",type=State.class,value="DELETED",initializedValue="INITIALIZED"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="STATE",type=State.class,value="DELETED",initializedValue="INITIALIZED"))valauthors:List<Author> | DELETED | INITIALIZED |
-| ✩long | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_MILLIS",type=long.class))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="DELETED_MILLIS",type=long.class))valauthors:List<Author> | 当前时钟毫秒数 | 0L |
-| ✩Nullable Long | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_MILLIS",type=Long.class,nullable=true))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="DELETED_MILLIS",type=Long.class,nullable=true))valauthors:List<Author> | 当前时钟毫秒数 | null |
-| ✩UUID | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_DATA",type=UUID.class))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_DATA",type=UUID.class))valauthors:List<Author> | 随机UUID | 所有字节为0的UUID |
-| ✩Nullable UUID | JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_DATA",type=UUID.class,nullable=true))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="DELETED_DATA",type=UUID.class,nullable=true))valauthors:List<Author> | 随机UUID | null |
-| Nullable LocalDateTime | ✩JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="DELETED_TIME",type=LocalDateTime.class,nullable=true,value="now"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="DELETED_TIME",type=LocalDateTime.class,nullable=true,value="now"))valauthors:List<Author> | 当前时间 | null |
-| JavaKotlin@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=@JoinTable.LogicalDeletedFilter(columnName="CREATED_TIME",type=LocalDateTime.class,nullable=true,value="null"))List<Author>authors();@ManyToMany@JoinTable(...省略其他属性...,logicalDeletedFilter=JoinTable.LogicalDeletedFilter(columnName="CREATED_TIME",type=LocalDateTime.class,nullable=true,value="null"))valauthors:List<Author> | null | 当前时间 |  |
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED",
+            type = boolean.class,
+            value = "true"
+        )
+)
+List<Author> authors();
+```
 
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED",
+            type = boolean.class,
+            value = "true"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>true</td>
+<td>false</td>
+</tr>
+<tr>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "ACTIVE",
+            type = boolean.class,
+            value = "false"
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "ACTIVE",
+            type = boolean.class,
+            value = "false"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>false</td>
+<td>true</td>
+</tr>
+<tr>
+<td>int</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "STATE",
+            type = int.class,
+            value = "1",
+            initializedValue = "0"
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "STATE",
+            type = int.class,
+            value = "1",
+            initializedValue = "0"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>枚举</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "STATE",
+            type = State.class,
+            value = "DELETED",
+            initializedValue = "INITIALIZED"
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "STATE",
+            type = State.class,
+            value = "DELETED",
+            initializedValue = "INITIALIZED"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>DELETED</td>
+<td>INITIALIZED</td>
+</tr>
+<tr>
+<td>
+
+✩
+
+long
+
+</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = long.class
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = long.class
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>当前时钟毫秒数</td>
+<td>0L</td>
+</tr>
+<tr>
+<td>
+
+✩
+
+Nullable Long
+
+</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = Long.class,
+            nullable = true
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = Long.class,
+            nullable = true
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>当前时钟毫秒数</td>
+<td>null</td>
+</tr>
+<tr>
+<td>
+
+✩
+
+UUID
+
+</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_DATA",
+            type = UUID.class
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_DATA",
+            type = UUID.class
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>随机UUID</td>
+<td>所有字节为0的UUID</td>
+</tr>
+<tr>
+<td>
+
+✩
+
+Nullable UUID
+
+</td>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_DATA",
+            type = UUID.class,
+            nullable = true
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_DATA",
+            type = UUID.class,
+            nullable = true
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>随机UUID</td>
+<td>null</td>
+</tr>
+<tr>
+<td rowspan="2">
+Nullable LocalDateTime
+</td>
+<td>
+
+✩
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_TIME",
+            type = LocalDateTime.class,
+            nullable = true,
+            value = "now"
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_TIME",
+            type = LocalDateTime.class,
+            nullable = true,
+            value = "now"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>当前时间</td>
+<td>null</td>
+</tr>
+<tr>
+<td>
+
+**Java**
+
+```java
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "CREATED_TIME",
+            type = LocalDateTime.class,
+            nullable = true,
+            value = "null"
+        )
+)
+List<Author> authors();
+```
+
+**Kotlin**
+
+```kotlin
+@ManyToMany
+@JoinTable(
+    ...省略其他属性...,
+    logicalDeletedFilter =
+        JoinTable.LogicalDeletedFilter(
+            columnName = "CREATED_TIME",
+            type = LocalDateTime.class,
+            nullable = true,
+            value = "null"
+        )
+)
+val authors: List<Author>
+```
+
+</td>
+<td>null</td>
+<td>当前时间</td>
+</tr>
+</tbody>
+</table>
 
 其中
 
+-   第一列或第二列中的 ✩ 表示当前配置方法支持下一节即将讨论的多版本数据。
 
-- 第一列或第二列中的 ✩ 表示当前配置方法支持下一节即将讨论的多版本数据。
+    :::info
+    支持逻辑删除却不考虑多版本数据的问题，是一种成熟度不高的考虑，因此建议使用支持多版本的逻辑删除配置。
+    :::
 
+-   `当前时钟毫秒数`，默认行为是`System.currentMillis()`，即是默认的`org.babyfish.jimmer.sql.meta.LogicalDeletedLongGenerator`的行为。
 
-信息
+    如果对此行为不满意，可以自定义类实现`LogicalDeletedValueGenerator<Long>`接口，并用如下配置
 
-支持逻辑删除却不考虑多版本数据的问题，是一种成熟度不高的考虑，因此建议使用支持多版本的逻辑删除配置。
-- `当前时钟毫秒数`，默认行为是`System.currentMillis()`，即是默认的`org.babyfish.jimmer.sql.meta.LogicalDeletedLongGenerator`的行为。
+    -   `@JoinTable.LogicalDeletedFilter(generatedType = YourGenerator.class)`
 
+    -   `@JoinTable.LogicalDeletedFilter(generatedRef = YourGenerator.class)`，这里`generatorRef`表示对象在IOC容器管理框架中的名称
 
-如果对此行为不满意，可以自定义类实现`LogicalDeletedValueGenerator<Long>`接口，并用如下配置
+-   `随机UUD`，默认行为是`UUID.randomUUID()`，即是默认的`org.babyfish.jimmer.sql.meta.LogicalDeletedUUIDGenerator`的行为。
 
+    如果对此行为不满意，可以自定义类实现`LogicalDeletedValueGenerator<UUID>`接口，并用如下配置
 
-- `@JoinTable.LogicalDeletedFilter(generatedType = YourGenerator.class)`
-- `@JoinTable.LogicalDeletedFilter(generatedRef = YourGenerator.class)`，这里`generatorRef`表示对象在IOC容器管理框架中的名称
-- `随机UUD`，默认行为是`UUID.randomUUID()`，即是默认的`org.babyfish.jimmer.sql.meta.LogicalDeletedUUIDGenerator`的行为。
+    -   `@JoinTable.LogicalDeletedFilter(generatedType = YourGenerator.class)`
 
-
-如果对此行为不满意，可以自定义类实现`LogicalDeletedValueGenerator<UUID>`接口，并用如下配置
-
-
-- `@JoinTable.LogicalDeletedFilter(generatedType = YourGenerator.class)`
-- `@JoinTable.LogicalDeletedFilter(generatedRef = YourGenerator.class)`，这里`generatorRef`表示对象在IOC容器管理框架中的名称
-
+    -   `@JoinTable.LogicalDeletedFilter(generatedRef = YourGenerator.class)`，这里`generatorRef`表示对象在IOC容器管理框架中的名称
 
 ## 多版本数据
 
-
 逻辑删除并不会导致数据被真正删除，只会导致数据被隐藏，这代表着数据出现多版本问题。
-
 
 以支持多版本数据的配置
 
+**Java**
 
-- Java
-- Kotlin
-
-
+```java
+@ManyToMany
+@JoinTable(
+    name = "BOOK_AUTHOR_MAPPING",
+    joinColumnName = "BOOK_ID",
+    inverseJoinColumnName = "AUTHOR_ID",
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = long.class
+        )
+)
+List<Author> authors();
 ```
-@ManyToMany@JoinTable(    name = "BOOK_AUTHOR_MAPPING",    joinColumnName = "BOOK_ID",    inverseJoinColumnName = "AUTHOR_ID",    logicalDeletedFilter =        @JoinTable.LogicalDeletedFilter(            columnName = "DELETED_MILLIS",            type = long.class        ))List<Author> authors();
-```
 
+**Kotlin**
 
+```kotlin
+@ManyToMany
+@JoinTable(
+    name = "BOOK_AUTHOR_MAPPING",
+    joinColumnName = "BOOK_ID",
+    inverseJoinColumnName = "AUTHOR_ID",|
+    logicalDeletedFilter =
+        @JoinTable.LogicalDeletedFilter(
+            columnName = "DELETED_MILLIS",
+            type = long.class
+        )
+)
+val authors: List<Author>
 ```
-@ManyToMany@JoinTable(    name = "BOOK_AUTHOR_MAPPING",    joinColumnName = "BOOK_ID",    inverseJoinColumnName = "AUTHOR_ID",|    logicalDeletedFilter =        @JoinTable.LogicalDeletedFilter(            columnName = "DELETED_MILLIS",            type = long.class        ))val authors: List<Author>
-```
-
 
 为例，`BOOK_AUTHOR_MAPPING`表有三列，全部作为主键的组成部分
 
-
+```csharp
+alter table BOOK_AUTHOR_MAPPING
+    add pk_BOOK_AUTHOR_MAPPING
+        primary key(
+            BOOK_ID,
+            AUTHOR_ID,
+            DELETED_MILLIS
+        );
 ```
-alter table BOOK_AUTHOR_MAPPING    add pk_BOOK_AUTHOR_MAPPING        primary key(            BOOK_ID,            AUTHOR_ID,            DELETED_MILLIS        );
-```
-
 
 假如表格输入如下
 
-
-| BOOK_ID | AUTHOR_ID | DELETED_MILLIS |
-| --- | --- | --- |
-| 97 | 23 | 0 |
-| 97 | 23 | 1708796420956 |
-| 97 | 23 | 1708234681901 |
-| 249 | 11 | 0 |
-| 249 | 11 | 1708722582793 |
-| 249 | 11 | 1708664484823 |
-
+|BOOK_ID|AUTHOR_ID|DELETED_MILLIS|
+|---|---|---|
+|97|23|0|
+|97|23|1708796420956|
+|97|23|1708234681901|
+|249|11|0|
+|249|11|1708722582793|
+|249|11|1708664484823|
 
 其中有4条关联数据被隐藏，有效数据只有两条
 
-
-| BOOK_ID | AUTHOR_ID | DELETED_MILLIS |
-| --- | --- | --- |
-| 97 | 23 | 0 |
-| 249 | 11 | 0 |
-
-[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/mapping/advanced/logical-deleted/join-table.mdx)最后 于 **2025年9月16日**  更新
-- [用法](#用法)
-- [多版本数据](#多版本数据)
+|BOOK_ID|AUTHOR_ID|DELETED_MILLIS|
+|---|---|---|
+|97|23|0|
+|249|11|0|

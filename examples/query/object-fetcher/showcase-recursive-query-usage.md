@@ -1,9 +1,9 @@
 # 3.1 基本用法
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/recursive-query/usage
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/recursive-query/usage
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [3. 递归查询](/zh/docs/showcase/recursive-query/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [3. 递归查询](../../../docs/showcase/recursive-query.md)
 * 3.1 基本用法
 
 本页总览

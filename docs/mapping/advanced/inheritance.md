@@ -1,0 +1,30 @@
+---
+title: 继承映射
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/mapping/advanced/inheritance
+---
+
+# 继承映射
+
+Jimmer支持实体继承，同时保留不可变对象模型、强类型查询DSL、对象抓取器、DTO语言和保存指令的
+全部能力。
+
+目前支持两种关系数据库映射策略：
+
+-   [`SINGLE_TABLE`](inheritance/mapping.md#单表继承)把整个继承层次存储在一张表中。
+-   [`JOINED`](inheritance/mapping.md#连接表继承)把公共属性存储在根表中，把派生实体类型声明的属性存储在
+    额外的表中。
+
+两种策略都在根表中使用鉴别器列。查询根实体时，Jimmer会自动创建实际子类型的对象；执行修改
+操作时，Jimmer会保证鉴别器和所有物理表保持一致。
+
+本节包含：
+
+-   [声明继承层次并选择映射策略](inheritance/mapping.md)
+-   [多态查询、对象抓取器和类型操作](inheritance/query.md)
+-   [保存指令、update/delete语句和类型变更](inheritance/mutation.md)
+-   [多态DTO和输入对象](inheritance/dto.md)
+
+:::info
+这里讨论的是实体继承。如果只需要复用属性而不需要多态实体层次，仍然应该使用
+[`@MappedSuperclass`](./mapped-super-class.md)。
+:::

@@ -1,124 +1,158 @@
 ---
-title: 'Connection Manager'
+title: Connection Manager
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/configuration/connection-manager
 ---
-# Connection Manager
 
+# Connection Manager
 
 ## 基本概念
 
-
 Jimmer中一切可执行的语句和指令都支持两种执行模式：
 
+-   基于用户指定的JDBC连接执行
 
-- 基于用户指定的JDBC连接执行
-- 由Jimmer自动决定基于某个JDBC连接执行
-
+-   由Jimmer自动决定基于某个JDBC连接执行
 
 这里，以`Executable`(Java)或`KExecutable`(kotlin)接口为例
 
+**Java**
 
-- Java
-- Kotlin
-Executable.java
+```java title="Executable.java"
+package org.babyfish.jimmer.sql.ast;
 
-```
-package org.babyfish.jimmer.sql.ast;import java.sql.Connection;public interface Executable<R> {    R execute();    R execute(Connection con);}
-```
+import java.sql.Connection;
 
-KExecutable.kt
+public interface Executable<R> {
 
-```
-package org.babyfish.jimmer.sql.ktimport java.sql.Connectioninterface KExecutable<R> {    fun execute(con: Connection? = null): R}
-```
+    R execute();
 
-
-- `execute(Connection)`：在用户指定的JDBC连接上执行。
-
-
-以查询为例：
-
-
-- Java
-- Kotlin
-
-
-```
-BookTable book = Tables.BOOK_TABLE;List<Book> books = sqlClient    .createQuery(book)    .select(book)    .execute(con);
+    R execute(Connection con);
+}
 ```
 
+**Kotlin**
 
-```
-val books = sqlClient    .createQuery(Book::class) {        select(table)    }    .execute(con)
-```
+```kotlin title="KExecutable.kt"
+package org.babyfish.jimmer.sql.kt
 
+import java.sql.Connection
 
-信息
-
-对这种使用方式而言，无需对SqlClient做出特别配置。
-- `execute()`或`execute(null)`：由Jimmer自主决定在某个JDBC连接上执行。
-
-
-以查询为例：
-
-
-- Java
-- Kotlin
-
-
-```
-BookTable book = Tables.BOOK_TABLE;List<Book> books = sqlClient    .createQuery(book)    .select(book)    .execute();
+interface KExecutable<R> {
+    fun execute(con: Connection? = null): R
+}
 ```
 
+-   `execute(Connection)`：在用户指定的JDBC连接上执行。
 
+    以查询为例：
+
+**Java**
+
+```java
+BookTable book = Tables.BOOK_TABLE;
+
+List<Book> books = sqlClient
+    .createQuery(book)
+    .select(book)
+
+    .execute(con);
 ```
-val books = sqlClient    .createQuery(Book::class) {        select(table)    }    .execute()
+
+**Kotlin**
+
+```kotlin
+val books = sqlClient
+    .createQuery(Book::class) {
+        select(table)
+    }
+
+    .execute(con)
 ```
 
+    :::info
+    对这种使用方式而言，无需对SqlClient做出特别配置。
+    :::
 
-信息
+-   `execute()`或`execute(null)`：由Jimmer自主决定在某个JDBC连接上执行。
 
-对这种使用方式而言，必须为SqlClient配置`ConnectionManager`。否则将会导致异常。
+    以查询为例：
 
+**Java**
 
-毫无疑问，第2种方式更符合业务系统开发要求，推荐使用。所以强烈建议为SqlClient配置`ConnectionManager`。
+```java
+BookTable book = Tables.BOOK_TABLE;
 
+List<Book> books = sqlClient
+    .createQuery(book)
+    .select(book)
+
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val books = sqlClient
+    .createQuery(Book::class) {
+        select(table)
+    }
+
+    .execute()
+```
+
+    :::info
+    对这种使用方式而言，必须为SqlClient配置`ConnectionManager`。否则将会导致异常。
+
+    毫无疑问，第2种方式更符合业务系统开发要求，推荐使用。所以强烈建议为SqlClient配置`ConnectionManager`。
+    :::
 
 ## 简单的ConnectionManager
 
+**Java**
 
-- Java
-- Kotlin
+```java
+javax.sql.DataSource dataSource = ...;
 
+JSqlClient sqlClient = JSqlClient
+    .newBuilder()
+    .setConnectionManager(
+        ConnectionManager
 
+            .simpleConnectionManager(dataSource)
+    )
+    .build();
 ```
-javax.sql.DataSource dataSource = ...;JSqlClient sqlClient = JSqlClient    .newBuilder()    .setConnectionManager(        ConnectionManager            .simpleConnectionManager(dataSource)    )    .build();
+
+**Kotlin**
+
+```kotlin
+//    val dataSource: DataSource = DriverManagerDataSource().apply {
+//        setDriverClassName("com.mysql.cj.jdbc.Driver")
+//        url = "jdbc:mysql://localhost:3306/jimmer_demo"
+//        username = "root"
+//        password = "" // 输入你自己的密码
+//    }
+
+val sqlClient = newKSqlClient {
+        setConnectionManager(
+            ConnectionManager.simpleConnectionManager(dataSource)
+        )
+        setDatabaseNamingStrategy(
+            //DefaultDatabaseNamingStrategy.LOWER_CASE
+        )
+    }
 ```
 
-
-```
-//    val dataSource: DataSource = DriverManagerDataSource().apply {//        setDriverClassName("com.mysql.cj.jdbc.Driver")//        url = "jdbc:mysql://localhost:3306/jimmer_demo"//        username = "root"//        password = "" // 输入你自己的密码//    }val sqlClient = newKSqlClient {        setConnectionManager(            ConnectionManager.simpleConnectionManager(dataSource)        )        setDatabaseNamingStrategy(            //DefaultDatabaseNamingStrategy.LOWER_CASE        )    }
-```
-
-
-危险
-
+:::danger
 这种方式仅负责从DataSource获取连接，并没有事务管理机制。
 
-
 但是，实际项目中，事务非常重要，因此，除学习和尝试外，不建议在实际项目使用这种方式。
-
+:::
 
 ## 受Spring事务管理的ConnectionManager
 
+这个话题在[Spring篇/整合Spring事务](../spring/transaction.md)中详细讨论过，本文不做重复阐述。
 
-这个话题在[Spring篇/整合Spring事务](spring/transaction)中详细讨论过，本文不做重复阐述。
-
-
-提示
-
+:::tip
 让Jimmer受到Spring事务的管理，是推荐用法。
-
-[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/configuration/connection-manager.mdx)最后 于 **2025年9月16日**  更新
-- [基本概念](#基本概念)
-- [简单的ConnectionManager](#简单的connectionmanager)
-- [受Spring事务管理的ConnectionManager](#受spring事务管理的connectionmanager)
+:::

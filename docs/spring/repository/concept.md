@@ -1,0 +1,144 @@
+---
+title: 定义Repository
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/spring/repository/concept
+---
+
+# 定义Repository
+
+Jimmer整合了spring data，为Java用户和Kotlin用户各自提供了一个Repository基接口。
+
+<table>
+    <tr>
+        <td>Java</td>
+        <td>org.babyfish.jimmer.spring.repository.JRepository&lt;E, ID&gt;</td>
+    </tr>
+    <tr>
+        <td>Kotlin</td>
+        <td>org.babyfish.jimmer.spring.repository.KRepository&lt;E, ID&gt;</td>
+    </tr>
+</table>
+
+该接口具备两个范型参数
+
+-   E: 实体类型
+-   ID: 实体ID类型
+
+通过继承此接口，开发人员可以快速实现各种Repository
+
+-   BookStoreRepository
+
+
+**Java**
+
+```java title="BookStoreRepository.java"
+package com.example.repository;
+
+import com.example.model.BookStore;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+
+public interface BookStoreRepository extends JRepository<BookStore, Long> {}
+```
+
+**Kotlin**
+
+```kotlin title="BookStoreRepository.kt"
+package com.example.repository
+
+import com.example.model.BookStore
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface BookStoreRepository : KRepository<BookStore, Long>
+```
+
+-   BookRepository
+
+
+**Java**
+
+```java title="BookRepository.java"
+package com.example.repository;
+
+import com.example.model.Book;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+
+public interface BookRepository extends JRepository<Book, Long> {}
+```
+
+**Kotlin**
+
+```kotlin title="BookRepository.kt"
+package com.example.repository
+
+import com.example.model.Book
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface BookRepository : KRepository<Book, Long>
+```
+
+-   AuthorRepository
+
+
+**Java**
+
+```java title="AuthorRepository.java"
+package com.example.repository;
+
+import com.example.model.Author;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+
+public interface AuthorRepository extends JRepository<Author, Long> {}
+```
+
+**Kotlin**
+
+```kotlin title="AuthorRepository.kt"
+package com.example.repository
+
+import com.example.model.Author
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface AuthorRepository : KRepository<Author, Long>
+```
+
+-   TreeNodeRepository
+
+
+**Java**
+
+```java title="TreeNodeRepository.java"
+package com.example.repository;
+
+import com.example.model.TreeNode;
+
+import org.babyfish.jimmer.spring.repository.JRepository;
+
+public interface TreeNodeRepository extends JRepository<TreeNode, Long> {}
+```
+
+**Kotlin**
+
+```kotlin title="TreeNodeRepository.kt"
+package com.example.repository
+
+import com.example.model.TreeNode
+
+import org.babyfish.jimmer.spring.repository.KRepository
+
+interface TreeNodeRepository : KRepository<TreeNode, Long>
+```
+
+:::note
+其他与spring-data相同，定义好接口即可，**无需**用`@org.springframework.stereotype.Repository`修饰。Jimmer会自动实现这些接口并注册到Spring中。
+
+但是有一个注意事项：
+
+- 默认情况下，自定义Repository所属的包必须是SpringBoot主类所在包或子包。
+
+- 否则，需要用`@org.babyfish.jimmer.spring.repository.EnableJimmerRepositories`修饰SpringBoot主类或其他Spring配置类，明确指定自定义Repository接口所在的包。
+:::

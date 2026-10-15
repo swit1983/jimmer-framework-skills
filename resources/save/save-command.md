@@ -101,14 +101,18 @@ Book bookWithId = BookDraft.$.produce(draft -> {
     draft.setId(1L);  // 有 ID，查询存在性，存在则 UPDATE
     draft.setName("Updated Book");
 });
-Book saved = sqlClient.save(bookWithId);  // 默认 UPSERT 模式
+Book saved = sqlClient
+    .save(bookWithId)           // 默认 UPSERT 模式
+    .getModifiedEntity();       // ⚠️ save 返回 SimpleSaveResult，不是实体本身
 
 Book bookWithKey = BookDraft.$.produce(draft -> {
     // 无 ID，但有 Key（name + edition）
     draft.setName("Learning GraphQL");
     draft.setEdition(3);
 });
-Book saved2 = sqlClient.save(bookWithKey);  // 按 Key 查询存在性
+Book saved2 = sqlClient
+    .save(bookWithKey)          // 按 Key 查询存在性
+    .getModifiedEntity();
 
 // INSERT_ONLY 模式 - 强制 INSERT（ID 由数据库生成）
 Book forcedInsert = BookDraft.$.produce(draft -> {
@@ -166,14 +170,31 @@ Book savedWild = sqlClient
     .getModifiedEntity();
 ```
 
-### 快捷方法与 SaveMode 等价关系
+### 可用 API（已对照 v0.12.4 源码核对）
 
-| 快捷方法 | 等价的 saveCommand 调用 | 说明 |
-|---------|----------------------|------|
-| `save(entity)` | `save(entity, SaveMode.UPSERT)` | 默认行为 |
-| `insert(entity)` | `save(entity, SaveMode.INSERT_ONLY)` | 强制 INSERT |
-| `update(entity)` | `save(entity, SaveMode.UPDATE_ONLY)` | 强制 UPDATE |
-| `insertIfAbsent(entity)` | `save(entity, SaveMode.INSERT_IF_ABSENT)` | 不存在才 INSERT |
+`JSqlClient` 继承 `SaveOperations`，**只提供**以下保存入口：
+
+| 方法 | 返回类型 | 说明 |
+|------|---------|------|
+| `save(entity)` | `SimpleSaveResult<E>` | 保存单个对象，默认 `UPSERT` |
+| `save(entity, mode, associatedMode)` | `SimpleSaveResult<E>` | 指定模式保存单个对象 |
+| `save(input)` | `SimpleSaveResult<E>` | 保存 Input DTO |
+| `saveEntities(entities)` | `BatchSaveResult<E>` | 批量保存实体 |
+| `saveEntities(entities, mode, associatedMode)` | `BatchSaveResult<E>` | 指定模式批量保存 |
+| `saveInputs(inputs)` | `BatchSaveResult<E>` | 批量保存 Input DTO |
+| `saveCommand(entity)` | `SimpleEntitySaveCommand<E>` | 需要更细粒度配置时用（链式） |
+| `saveEntitiesCommand(entities)` | `BatchEntitySaveCommand<E>` | 批量场景的链式命令 |
+
+> ⚠️ **勘误**：源码中**不存在** `insert()` / `update()` / `merge()` / `insertIfAbsent()`
+> 这类以动词命名的快捷方法。想改变行为请显式指定 `SaveMode`：
+>
+> ```java
+> sqlClient.save(book, SaveMode.UPDATE_ONLY, AssociatedSaveMode.MERGE);
+> // 或
+> sqlClient.saveCommand(book).setMode(SaveMode.UPDATE_ONLY).execute();
+> ```
+>
+> `Result` 也并非实体本身，取实体需要 `getModifiedEntity()` / `getModifiedEntities()`。
 
 ## 关联保存模式
 
@@ -245,15 +266,19 @@ sqlClient.saveCommand(book)
     .execute();
 ```
 
-#### 快捷方法的默认模式
+#### 各方法的默认模式
 
-| 方法 | 默认 AssociatedSaveMode |
-|------|------------------------|
-| `save()` / `saveEntities()` / `saveInputs()` | `REPLACE` |
-| `insert()` / `insertEntities()` / `insertInputs()` | `APPEND` |
-| `insertIfAbsent()` / `insertEntitiesIfAbsent()` / `insertInputsIfAbsent()` | `APPEND_IF_ABSENT` |
-| `update()` / `updateEntities()` / `updateInputs()` | `UPDATE` |
-| `merge()` / `mergeEntities()` / `mergeInputs()` | `MERGE` |
+| 方法 | 默认 `SaveMode` | 默认 `AssociatedSaveMode` |
+|------|----------------|--------------------------|
+| `save(entity)` | `UPSERT` | `REPLACE` |
+| `saveEntities(entities)` | `UPSERT` | `REPLACE` |
+| `saveInputs(inputs)` | `UPSERT` | `REPLACE` |
+| `saveCommand(entity)` | `UPSERT` | `REPLACE` |
+
+> 源码依据：`AbstractEntitySaveCommandImpl` 中
+> `this.defaultMode = defaultMode != null ? defaultMode : AssociatedSaveMode.REPLACE`。
+> 这意味着**不显式设置时，关联是 REPLACE 语义**：未出现在新数据中的旧关联会被脱钩处理。
+> 若只想追加、不想删除旧关联，请显式改为 `APPEND` / `MERGE`。
 
 ## 脱钩操作 (Dissociate) - 详解
 
@@ -493,11 +518,11 @@ try {
 ## 批量保存
 
 ```java
-// 批量保存书籍
+// 批量保存书籍（注意：批量用 saveEntitiesCommand，不是 saveCommand）
 List<Book> books = Arrays.asList(book1, book2, book3);
 
 BatchSaveResult<Book> result = sqlClient
-    .saveCommand(books)
+    .saveEntitiesCommand(books)
     .setMode(SaveMode.UPSERT)
     .execute();
 
@@ -563,7 +588,7 @@ Book book = BookDraft.$.produce(draft -> {
 });
 
 // 级联保存
-SaveResult<Book> result = sqlClient
+SimpleSaveResult<Book> result = sqlClient
     .saveCommand(book)
     .setAssociatedMode(BookProps.AUTHORS, AssociatedSaveMode.MERGE)
     .execute();

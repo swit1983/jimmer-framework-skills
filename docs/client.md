@@ -1,0 +1,40 @@
+---
+title: 客户端篇
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/client
+---
+
+# 客户端篇
+
+Jimmer为HTTP客户端开发提供了良好的开发体验。
+
+比较主流的HTTP服务有两种形式，REST和GraphQL。
+
+## GraphQL
+
+-   服务端：Jimmer能够轻松构建GraphQL服务，请参见[GraphQL服务的Java示范](https://github.com/babyfish-ct/jimmer-examples/tree/main/java/jimmer-sql-graphql)和[GraphQL服务的Kotlin示范](https://github.com/babyfish-ct/jimmer-examples/tree/main/kotlin/jimmer-sql-graphql-kt)。
+
+-   客户端：有很多技术可以选择，包括我的另外一个项目[graphql-ts-client](https://github.com/babyfish-ct/graphql-ts-client)。
+
+由于GraphQL客户端技术体系非常成熟，无需过多讨论。本章节中，我们重点讨论更为常见的REST客户端。
+
+## REST
+
+Jimmer能为REST服务自动生成TypeScript和OpenAPI代码，实现自动对接 *(以后会支持更多客户端语言)*，这套实现具备如下三个重要特征：
+
+1.  消灭返回数据类型的`DtoExplosion`（官方页面含交互演示）。
+
+    -   作为生产者的服务端，不用定义每个业务场景所需要的DTO类型并负责相关数据转换，只需向客户端返回全局统一的ORM实体对象即可，开发负担能得到极大的简化。
+
+    -   作为消费者的客户端，调用Jimmer自动生成的客户端代码，客户端代码自动还原出DTO爆炸，为每一种业务场景生成与之精确匹配的DTO类型定义，开发体验能提到巨大提升。
+
+    :::tip
+    Jimmer中服务端和客户端的编程模型是不一样的，双方都能得对各自最有利的编程模型，这也是Jimmer客户端独一无二的特色和最大价值。
+    :::
+
+2.  基于文档注释
+
+    和SpringDoc等技术不同，开发人员无需使用大量的annotation去标记对外Api各部分的文档信息，只需使用最基本的Java或Kotlin语言的文档注释，就可以获得丰富的API描述。
+
+3.  远程异常
+
+    长久以来，服务端和客户端之间的异常对接存在技术空白，Jimmer提供了一套远程异常机制，让客户端获得极致的异常处理开发体验。

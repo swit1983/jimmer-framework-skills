@@ -1,8 +1,8 @@
 # 8. 其他查询
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/other-query
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/other-query
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * 8. 其他查询
 
 本页总览

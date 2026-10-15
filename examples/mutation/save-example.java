@@ -1,20 +1,25 @@
 /**
  * Jimmer Save Command 示例 - Java
- * 
+ *
  * 只需一个方法调用，保存任意形状的数据结构
  * Jimmer 自动对比差异，执行相应的 insert/update/delete
+ *
+ * API 已对照 jimmer v0.12.4 源码校验。
  */
 package com.example.service;
 
-import org.babyfish.jimmer.sql.JSqlClient;
-import org.babyfish.jimmer.sql.SaveCommand;
-import org.babyfish.jimmer.sql.SaveResult;
-import com.example.model.*;
 import com.example.dto.BookInput;
+import com.example.model.*;
+import com.example.model.Immutables;
+import org.babyfish.jimmer.sql.JSqlClient;
+import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
+import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
+import org.babyfish.jimmer.sql.ast.mutation.SimpleSaveResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 保存操作示例
@@ -34,15 +39,14 @@ public class BookSaveService {
      */
     @Transactional
     public long saveSimpleBook() {
-        // 使用 Draft API 构建动态对象
-        Book book = Books.createBook(draft -> {
+        Book book = Immutables.createBook(draft -> {
             draft.setName("Learning GraphQL");
             draft.setEdition(1);
             draft.setPrice(new BigDecimal("49.99"));
         });
 
-        // 一个方法保存完成
-        SaveResult<Book> result = jSqlClient.save(book);
+        // save 返回 SimpleSaveResult，取回实体需调用 getModifiedEntity()
+        SimpleSaveResult<Book> result = jSqlClient.save(book);
         return result.getModifiedEntity().id();
     }
 
@@ -52,11 +56,11 @@ public class BookSaveService {
      */
     @Transactional
     public long saveBookWithStore() {
-        Book book = Books.createBook(draft -> {
+        Book book = Immutables.createBook(draft -> {
             draft.setName("Learning GraphQL");
             draft.setEdition(1);
             draft.setPrice(new BigDecimal("49.99"));
-            
+
             // 直接嵌套设置关联对象
             draft.applyStore(store -> {
                 store.setName("O'Reilly");
@@ -77,18 +81,18 @@ public class BookSaveService {
         BookStore store = Immutables.createBookStore(draft -> {
             draft.setName("O'Reilly");
             draft.setWebsite("https://www.oreilly.com/");
-            
+
             draft.addIntoBooks(book -> {
                 book.setName("Learning GraphQL");
                 book.setEdition(1);
                 book.setPrice(new BigDecimal("49.99"));
-                
+
                 book.addIntoAuthors(author -> {
                     author.setFirstName("Eve");
                     author.setLastName("Procello");
                     author.setGender(Gender.FEMALE);
                 });
-                
+
                 book.addIntoAuthors(author -> {
                     author.setFirstName("Alex");
                     author.setLastName("Banks");
@@ -97,63 +101,60 @@ public class BookSaveService {
             });
         });
 
-        // 一次性保存整个嵌套结构
-        SaveResult<BookStore> result = jSqlClient.save(store);
+        SimpleSaveResult<BookStore> result = jSqlClient.save(store);
         return result.getModifiedEntity().id();
     }
 
     /**
      * 示例 4：更新已有对象
-     * 只修改传入的属性，保持其他属性不变
+     * 只修改传入的属性，保持其他属性不变（"不完整对象"更新）
      */
     @Transactional
     public void updateBookPrice(long bookId, BigDecimal newPrice) {
-        Book book = Books.createBook(draft -> {
-            draft.setId(bookId);  // 指定 ID 表示更新
-            draft.setPrice(newPrice);  // 只修改价格
-            // 其他属性不设置，保持原有值不变
+        Book book = Immutables.createBook(draft -> {
+            draft.setId(bookId);
+            draft.setPrice(newPrice);
         });
-        
+
+        // 默认 SaveMode.UPSERT：带 id 时按 id 更新，且只更新已赋值的列
         jSqlClient.save(book);
+
+        // 若确定只更新、不新增，可显式限制
+        jSqlClient.saveCommand(book)
+                .setMode(SaveMode.UPDATE_ONLY)
+                .execute();
     }
 
     /**
      * 示例 5：通过 DTO 保存
-     * 从 DTO 转换为实体对象保存
+     * 从 Input DTO 转换为实体对象保存
      */
     @Transactional
     public long saveFromDto(BookInput input) {
-        // 将 Input DTO 转换为实体对象
-        Book book = input.toEntity();
-        SaveResult<Book> result = jSqlClient.save(book);
+        SimpleSaveResult<Book> result = jSqlClient.save(input.toEntity());
         return result.getModifiedEntity().id();
     }
 
     /**
-     * 示例 6：修改关联关系
+     * 示例 6：修改关联关系（短关联保存）
      * 只改变书籍和书店的关联，不修改书店本身
-     * 
-     * 这就是"短关联"保存
      */
     @Transactional
     public void changeBookStore(long bookId, Long newStoreId) {
-        Book book = Books.createBook(draft -> {
+        Book book = Immutables.createBook(draft -> {
             draft.setId(bookId);
-            // 只设置关联 ID，Jimmer 只会修改关联关系
-            // 不会修改关联对象本身
             draft.setStoreId(newStoreId);
         });
-        
+
         jSqlClient.save(book);
     }
 
     /**
      * 示例 7：递归保存树形结构
-     * 保存分类树，支持任意深度
      */
     @Transactional
     public long saveCategoryTree() {
-        Category root = Categories.createCategory(draft -> {
+        Category root = Immutables.createCategory(draft -> {
             draft.setName("Technology");
             draft.addIntoChildren(programming -> {
                 programming.setName("Programming");
@@ -165,31 +166,30 @@ public class BookSaveService {
                 });
             });
         });
-        
-        SaveResult<Category> result = jSqlClient.save(root);
+
+        SimpleSaveResult<Category> result = jSqlClient.save(root);
         return result.getModifiedEntity().id();
     }
 
     /**
      * 示例 8：设置保存选项
-     * 自定义保存行为
+     * 注意：保存指令对「关联」的默认模式是 REPLACE，
+     * 只想追加而不想删除旧关联时，必须显式改为 APPEND / MERGE。
      */
     @Transactional
     public void saveWithOptions(Book book) {
         jSqlClient
                 .saveCommand(book)
-                // 设置关联保存模式：追加而不是替换
-                .setAssociatedSaveMode(SaveCommand.AssociatedSaveMode.APPEND)
+                .setAssociatedModeAll(AssociatedSaveMode.APPEND)
                 .execute();
     }
 
     /**
-     * 示例 9：删除数据
-     * 根据 ID 删除
+     * 示例 9：根据 ID 删除
      */
     @Transactional
     public void deleteBook(long bookId) {
-        jSqlClient.delete(Book.class, bookId);
+        jSqlClient.deleteById(Book.class, bookId);
     }
 
     /**
@@ -197,6 +197,6 @@ public class BookSaveService {
      */
     @Transactional
     public void deleteBooks(List<Long> bookIds) {
-        jSqlClient.deleteAll(Book.class, bookIds);
+        jSqlClient.deleteByIds(Book.class, bookIds);
     }
 }

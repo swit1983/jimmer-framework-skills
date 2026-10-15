@@ -1,8 +1,8 @@
 # 1. 基本查询
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/base
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/base
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * 1. 基本查询
 
 本页总览

@@ -1,8 +1,8 @@
 # 10. Delete语句
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/delete-statement
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/delete-statement
 
-* [案例展示 ★](/zh/docs/showcase/)
+* [案例展示 ★](../../docs/showcase.md)
 * 10. Delete语句
 
 # 10. Delete语句

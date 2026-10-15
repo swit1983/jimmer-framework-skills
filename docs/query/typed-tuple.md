@@ -1,0 +1,254 @@
+---
+title: Typed Tuple
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/query/typed-tuple
+---
+
+# Typed Tuple
+
+当查询选择多个表达式时，默认返回`Tuple2`、`Tuple3`等类型。对于局部查询这很方便，
+但可复用的报表通常需要有意义的行类型，而不是位置化的`_1`、`_2`属性。
+
+`@TypedTuple`根据一个行类型声明生成两组相关API：
+
+-   可以传给`select`的mapper，查询结果会被直接实例化为声明的行类型。
+
+-   当查询作为[base query](./base-query.md)使用时，暴露相同行结构的命名table facade。
+
+## 声明
+
+声明一个普通的不可变类并添加`@TypedTuple`：
+
+**Java**
+
+```java title="StoreStatistics.java"
+@TypedTuple
+@lombok.Data
+public class StoreStatistics {
+
+    private final UUID storeId;
+
+    private final long bookCount;
+
+    private final BigDecimal avgPrice;
+}
+```
+
+**Kotlin**
+
+```kotlin title="StoreStatistics.kt"
+@TypedTuple
+data class StoreStatistics(
+    val storeId: UUID,
+    val bookCount: Long,
+    val avgPrice: BigDecimal?
+)
+```
+
+注解处理器会生成`StoreStatisticsMapper`。它保留声明的属性顺序，并在编译期检查每个
+属性对应的selection类型。
+
+:::tip
+Java record同样受支持：
+
+```java
+@TypedTuple
+public record StoreStatistics(
+    UUID storeId,
+    long bookCount,
+    BigDecimal avgPrice
+) {}
+```
+:::
+
+## Select投影
+
+使用生成的mapper，而不是分别选择多个表达式：
+
+**Java**
+
+```java
+BookTable book = BookTable.$;
+
+List<StoreStatistics> rows = sqlClient
+    .createQuery(book)
+    .where(book.storeId().isNotNull())
+    .groupBy(book.storeId())
+    .select(
+        StoreStatisticsMapper
+            .storeId(book.storeId())
+            .bookCount(Expression.rowCount())
+            .avgPrice(book.price().avgAsDecimal())
+    )
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val rows: List<StoreStatistics> = sqlClient
+    .createQuery(Book::class) {
+        where(table.storeId.isNotNull())
+        groupBy(table.storeId)
+        select(
+            StoreStatisticsMapper
+                .storeId(table.storeId.asNonNull())
+                .bookCount(rowCount())
+                .avgPrice(avgAsDecimal(table.price))
+        )
+    }
+    .execute()
+```
+
+SQL投影并未改变，但每个JDBC行现在会直接实例化为`StoreStatistics`，无需在应用层把
+`Tuple3`转换为业务对象。相同投影也可以用于`stream`以及接受投影的DML `returning` API。
+
+## Base Query和CTE
+
+同一个mapper也可以被`createBaseQuery`选择。此时，代码生成器还会提供
+`StoreStatisticsTable`，它的属性是DSL表达式，而不是已经实例化的值：
+
+**Java**
+
+```java
+BookTable book = BookTable.$;
+
+StoreStatisticsTable statistics = sqlClient
+    .createBaseQuery(book)
+    .where(book.storeId().isNotNull())
+    .groupBy(book.storeId())
+    .select(
+        StoreStatisticsMapper
+            .storeId(book.storeId())
+            .bookCount(Expression.rowCount())
+            .avgPrice(book.price().avgAsDecimal())
+    )
+    .asCteBaseTable();
+
+List<Tuple2<UUID, BigDecimal>> rows = sqlClient
+    .createQuery(statistics)
+    .where(statistics.getBookCount().gt(2L))
+    .select(statistics.getStoreId(), statistics.getAvgPrice())
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val statistics = sqlClient
+    .createBaseQuery(Book::class) {
+        where(table.storeId.isNotNull())
+        groupBy(table.storeId)
+        select(
+            StoreStatisticsMapper
+                .storeId(table.storeId.asNonNull())
+                .bookCount(rowCount())
+                .avgPrice(avgAsDecimal(table.price))
+        )
+    }
+    .asCteBaseTable()
+
+val rows = sqlClient.createQuery(statistics) {
+    where(table.bookCount gt 2L)
+    select(table.storeId, table.avgPrice)
+}.execute()
+```
+
+使用`asBaseTable()`创建derived table，使用`asCteBaseTable()`创建CTE。base query用于
+weak join、union或recursive CTE时，生成的命名facade仍会被保留。Kotlin还会生成
+`StoreStatisticsTable.Nullable`，当outer weak join使连接表的所有列可null时会使用该类型。
+
+命名typed table不受九个逻辑属性的限制。属性既可以代表标量表达式，也可以代表实体表；
+一个实体表可以展开为多个物理SQL列，但仍然只占用一个typed-tuple属性。
+
+### 向外传递实体表
+
+当大部分列来自同一个实体、只有少量列是计算结果时，不需要在typed tuple中重复声明
+实体的所有属性，只需声明一个entity-valued属性：
+
+**Java**
+
+```java title="BookWithMetrics.java"
+@TypedTuple
+@lombok.Data
+public class BookWithMetrics {
+
+    private final Book book;
+
+    private final long authorCount;
+}
+```
+
+**Kotlin**
+
+```kotlin title="BookWithMetrics.kt"
+@TypedTuple
+data class BookWithMetrics(
+    val book: Book,
+    val authorCount: Long
+)
+```
+
+把table本身传给该mapper属性，这与位置化API中的`addSelect(table)`或
+`selections.add(table)`完全对应：
+
+**Java**
+
+```java
+BookTable book = BookTable.$;
+AuthorTableEx author = AuthorTableEx.$;
+
+BookWithMetricsTable report = sqlClient
+    .createBaseQuery(book)
+    .select(
+        BookWithMetricsMapper
+            .book(book)
+            .authorCount(
+                sqlClient.createSubQuery(author)
+                    .where(author.books().id().eq(book.id()))
+                    .selectCount()
+            )
+    )
+    .asCteBaseTable();
+
+sqlClient.createQuery(report)
+    .select(report.getBook().name(), report.getAuthorCount())
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val report = sqlClient
+    .createBaseQuery(Book::class) {
+        select(
+            BookWithMetricsMapper
+                .book(table)
+                .authorCount(
+                    subQuery(Author::class) {
+                        where(table.books.id eq parentTable.id)
+                        selectCount()
+                    }
+                )
+        )
+    }
+    .asCteBaseTable()
+
+sqlClient.createQuery(report) {
+    select(table.book.name, table.authorCount)
+}.execute()
+```
+
+生成的`book`访问器在Java中是`BookTable`，在Kotlin中是`KNonNullTable<Book>`。
+投影反向传播仍然有效：内部查询只导出外部查询需要的`Book`列，以及实际使用的计算列。
+在外部查询中选择`book`本身或对其应用fetcher时，也会像位置化table selection一样向内
+传播所需的实体shape。
+
+:::caution
+Typed tuple始终可以用作普通查询的结果投影。但是，要将其用作base table，每个selection
+都必须能由SQL base table表示。因此，typed base-query投影中不允许fetcher selection和
+output DTO selection。
+
+Union或recursive CTE的所有分支必须使用相同的生成typed投影。
+:::
+
+对于小型的局部base query，仍然可以继续使用位置化的`BaseTable1` ... `BaseTable9` API。

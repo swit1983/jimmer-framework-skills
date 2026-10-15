@@ -1,0 +1,366 @@
+---
+title: 3.1 基本用法
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/recursive-query/usage
+---
+
+# 3.1 基本用法
+
+## 查询动态实体
+
+**Java**
+
+```java
+TreeNodeTable table = TreeNodeTable.$;
+
+List<TreeNode> rootNodes = sqlClient
+    .createQuery(table)
+    .where(table.parentId().isNull())
+    .select(
+        table.fetch(
+            TreeNodeFetcher.$
+                .allScalarFields()
+
+                .recursiveChildNodes()
+        )
+    )
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val rootNodes = sqlClient
+    .createQuery(TreeNode::class) {
+        where(table.parentId.isNull())
+        select(
+            table.fetchBy {
+                allScalarFields()
+
+                `childNodes*`()
+            }
+        )
+    }
+    .execute()
+```
+
+得到如下的数据
+
+```json
+[
+    {
+        "id":1,
+        "name":"Home",
+        "childNodes":[
+            {
+                "id":2,
+                "name":"Food",
+                "childNodes":[
+                    {
+                        "id":3,
+                        "name":"Drinks",
+                        "childNodes":[
+                            {
+                                "id":4,
+                                "name":"Coca Cola",
+                                "childNodes":[]
+                            },
+                            {
+                                "id":5,
+                                "name":"Fanta",
+                                "childNodes":[]
+                            }
+                        ]
+                    },
+                    {
+                        "id":6,
+                        "name":"Bread",
+                        "childNodes":[
+                            {
+                                "id":7,
+                                "name":"Baguette",
+                                "childNodes":[]
+                            },
+                            {
+                                "id":8,
+                                "name":"Ciabatta",
+                                "childNodes":[]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id":9,
+                "name":"Clothing",
+                "childNodes":[
+                    {
+                        "id":10,
+                        "name":"Woman",
+                        "childNodes":[
+                            {
+                                "id":11,
+                                "name":"Casual wear",
+                                "childNodes":[
+                                    {
+                                        "id":12,
+                                        "name":"Dress",
+                                        "childNodes":[]
+                                    },
+                                    {
+                                        "id":13,
+                                        "name":"Miniskirt",
+                                        "childNodes":[]
+                                    },
+                                    {
+                                        "id":14,
+                                        "name":"Jeans",
+                                        "childNodes":[]
+                                    }
+                                ]
+                            },
+                            {
+                                "id":15,
+                                "name":"Formal wear",
+                                "childNodes":[
+                                    {
+                                        "id":16,
+                                        "name":"Suit",
+                                        "childNodes":[]
+                                    },
+                                    {
+                                        "id":17,
+                                        "name":"Shirt",
+                                        "childNodes":[]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id":18,
+                        "name":"Man",
+                        "childNodes":[
+                            {
+                                "id":19,
+                                "name":"Casual wear",
+                                "childNodes":[
+                                    {
+                                        "id":20,
+                                        "name":"Jacket",
+                                        "childNodes":[]
+                                    },
+                                    {
+                                        "id":21,
+                                        "name":"Jeans",
+                                        "childNodes":[]
+                                    }
+                                ]
+                            },
+                            {
+                                "id":22,
+                                "name":"Formal wear",
+                                "childNodes":[
+                                    {
+                                        "id":23,
+                                        "name":"Suit",
+                                        "childNodes":[]
+                                    },
+                                    {
+                                        "id":24,
+                                        "name":"Shirt",
+                                        "childNodes":[]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
+```
+
+## 查询静态DTO
+
+在`src/main/dto`文件夹下新建任何一个扩展名为dto的文件，编辑代码如下
+
+```sh
+export com.yourcompany.yourproject.model.TreeNode
+    -> package com.yourcompany.yourproject.model.dto
+
+RecursiveTreeNodeView {
+    #allScalars(this)
+
+    childNodes*
+}
+```
+
+编译项目，生成Java/Kotlin类型`RecursiveTreeNodeView`
+
+**Java**
+
+```java
+TreeNodeTable table = TreeNodeTable.$;
+
+List<RecursiveTreeNodeView> rootNodes = sqlClient
+    .createQuery(table)
+    .where(table.parentId().isNull())
+    .select(
+
+        table.fetch(RecursiveTreeNodeView.class)
+    )
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val rootNodes = sqlClient
+    .createQuery(TreeNode::class) {
+        where(table.parentId.isNull())
+        select(
+
+            table.fetch(RecursiveTreeNodeView::class)
+        )
+    }
+    .execute()
+```
+
+得到如下结果
+
+```json
+[
+    RecursiveTreeNodeView(
+        id=1,
+        name=Home,
+        childNodes=[
+            RecursiveTreeNodeView(
+                id=2,
+                name=Food,
+                childNodes=[
+                    RecursiveTreeNodeView(
+                        id=3,
+                        name=Drinks,
+                        childNodes=[
+                            RecursiveTreeNodeView(
+                                id=4,
+                                name=Coca Cola,
+                                childNodes=[]
+                            ),
+                            RecursiveTreeNodeView(
+                                id=5,
+                                name=Fanta,
+                                childNodes=[]
+                            )
+                        ]
+                    ),
+                    RecursiveTreeNodeView(
+                        id=6,
+                        name=Bread,
+                        childNodes=[
+                            RecursiveTreeNodeView(
+                                id=7,
+                                name=Baguette,
+                                childNodes=[]
+                            ),
+                            RecursiveTreeNodeView(
+                                id=8,
+                                name=Ciabatta,
+                                childNodes=[]
+                            )
+                        ]
+                    )
+                ]
+            ),
+            RecursiveTreeNodeView(
+                id=9,
+                name=Clothing,
+                childNodes=[
+                    RecursiveTreeNodeView(
+                        id=10,
+                        name=Woman,
+                        childNodes=[
+                            RecursiveTreeNodeView(
+                                id=11,
+                                name=Casual wear,
+                                childNodes=[
+                                    RecursiveTreeNodeView(
+                                        id=12,
+                                        name=Dress,
+                                        childNodes=[]
+                                    ),
+                                    RecursiveTreeNodeView(
+                                        id=13,
+                                        name=Miniskirt,
+                                        childNodes=[]
+                                    ),
+                                    RecursiveTreeNodeView(
+                                        id=14,
+                                        name=Jeans,
+                                        childNodes=[]
+                                    )
+                                ]
+                            ),
+                            RecursiveTreeNodeView(
+                                id=15,
+                                name=Formal wear,
+                                childNodes=[
+                                    RecursiveTreeNodeView(
+                                        id=16,
+                                        name=Suit,
+                                        childNodes=[]
+                                    ),
+                                    RecursiveTreeNodeView(
+                                        id=17,
+                                        name=Shirt,
+                                        childNodes=[]
+                                    )
+                                ]
+                            )
+                        ]
+                    ),
+                    RecursiveTreeNodeView(
+                        id=18,
+                        name=Man,
+                        childNodes=[
+                            RecursiveTreeNodeView(
+                                id=19,
+                                name=Casual wear,
+                                childNodes=[
+                                    RecursiveTreeNodeView(
+                                        id=20,
+                                        name=Jacket,
+                                        childNodes=[]
+                                    ),
+                                    RecursiveTreeNodeView(
+                                        id=21,
+                                        name=Jeans,
+                                        childNodes=[]
+                                    )
+                                ]
+                            ),
+                            RecursiveTreeNodeView(
+                                id=22,
+                                name=Formal wear,
+                                childNodes=[
+                                    RecursiveTreeNodeView(
+                                        id=23,
+                                        name=Suit,
+                                        childNodes=[]
+                                    ),
+                                    RecursiveTreeNodeView(
+                                        id=24,
+                                        name=Shirt,
+                                        childNodes=[]
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+    )
+]
+```

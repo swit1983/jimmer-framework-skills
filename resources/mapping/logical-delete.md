@@ -142,4 +142,4 @@ public class DeletedFilter implements Filter<Book> {
 }
 ```
 
-更多信息见 [全局过滤器](./global-filter.md)。
+更多信息见 [全局过滤器](../../docs/query/global-filter.md)。

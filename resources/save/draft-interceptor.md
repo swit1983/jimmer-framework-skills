@@ -248,6 +248,6 @@ WHERE ID = ?
 
 ## 参考
 
-- [Jimmer 官方文档 - 保存前拦截器](https://jimmer.deno.dev/zh/docs/mutation/draft-interceptor)
+- [Jimmer 官方文档 - 保存前拦截器](https://babyfish-ct.github.io/jimmer-doc/zh/docs/mutation/draft-interceptor)
 - [保存指令文档](./save-command.md)
 - [官方示例代码](https://github.com/babyfish-ct/jimmer-examples)

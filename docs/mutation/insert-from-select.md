@@ -1,0 +1,397 @@
+---
+title: 从查询插入和合并数据
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/mutation/insert-from-select
+---
+
+# 从查询插入和合并数据
+
+使用`createInsert`或`createUpsert`，可以把[base-query](../query/base-query.md)的类型安全查询结果
+写入目标表。这适用于导入查询结果、复制数据，以及对多行执行计算更新，无需为每行构造实体对象。
+
+source决定参与操作的数据行，指令则显式地把source表达式映射到一个目标表的物理属性。
+
+## 直接选择实体表
+
+对于实体source，可以选择table并定义过滤条件，无需在source和mutation中重复列出属性。
+下面假定存在单独的`BookStoreArchive`实体，其物理属性`id`和`name`与`BookStore`兼容：
+
+**Java**
+
+```java
+BookStoreTable store = BookStoreTable.$;
+BookStoreArchiveTable archive = BookStoreArchiveTable.$;
+
+BookStoreTable selectedStores = sqlClient
+    .createBaseQuery(store)
+    .where(store.name().eq("MANNING"))
+    .select(store)
+    .asBaseTable();
+
+int affectedRowCount = sqlClient
+    .createInsert(archive, selectedStores)
+    .set(archive.id(), selectedStores.id())
+    .set(archive.name(), selectedStores.name())
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val selectedStores = sqlClient.createBaseQuery(BookStore::class) {
+    where(table.name eq "MANNING")
+    select(table)
+}.asBaseTable()
+
+val affectedRowCount = sqlClient
+    .createInsert(BookStoreArchive::class, selectedStores) {
+        set(table.id, sourceTable.id)
+        set(table.name, sourceTable.name)
+    }
+    .execute()
+```
+
+Java直接使用`selectedStores.id()`，Kotlin直接使用`sourceTable.id`，无需`get_1()`/`_1`
+包装。投影反向传播只导出mutation需要的列，因此未使用的`website`等属性不会被选择。
+过滤条件仍决定哪些行参与操作。
+
+映射也可以访问source的关联，例如Java的`selectedStores.asTableEx().books().name()`
+或Kotlin的`sourceTable.asTableEx().books.name`。这些连接添加到使用source的外层查询中；
+source会自动导出连接所需的ID或外键列，嵌套source也会逐层传播这些列。
+to-many连接遵循普通SQL连接语义，每个匹配的关联都会产生一行source数据。
+
+同一个source也适用于`createUpsert`、returning指令和普通查询。查询示例、嵌套source和
+集合操作的行为请参阅[直接选择实体表](../query/base-query.md#直接选择实体表)。
+导出的table始终绑定到source查询，不能用作mutation目标；应像上例一样单独指定目标表。
+普通table单例需要先通过base-query导出，才能作为mutation的source。
+
+## 准备类型安全的source
+
+source可以来自实体查询、关联表查询、派生表、CTE、递归CTE或联合查询。连接、过滤和聚合都在
+source查询中定义。[类型化元组](../query/typed-tuple.md)可以为查询结果的列提供有意义的名称。
+
+下面先声明输入行，再用一个没有根表的查询提供新书店的数据。示例假定`BookStore`模型的id类型为`Long`：
+
+**Java**
+
+```java
+@TypedTuple
+@lombok.Data
+public class StoreInput {
+    private final Long id;
+    private final String name;
+    private final String website;
+}
+```
+
+**Kotlin**
+
+```kotlin
+@TypedTuple
+data class StoreInput(
+    val id: Long,
+    val name: String,
+    val website: String?
+)
+```
+
+**Java**
+
+```java
+StoreInputTable source = sqlClient
+    .createBaseQuery()
+    .select(
+        StoreInputMapper
+            .id(Expression.value(100L))
+            .name(Expression.value("New Store"))
+            .website(Expression.value("https://example.com"))
+    )
+    .asBaseTable();
+```
+
+**Kotlin**
+
+```kotlin
+val source = baseTableSymbol {
+    sqlClient.createBaseQuery {
+        select(
+            StoreInputMapper
+                .id(value(100L))
+                .name(value("New Store"))
+                .website(value("https://example.com"))
+        )
+    }
+}
+```
+
+把source替换为普通的多行base-query，不需要改变后面的修改API。也可以通过`createQuery(source)`
+单独查询它。需要CTE时，对base-query使用`asCteBaseTable()`。
+
+## 插入
+
+**Java**
+
+```java
+BookStoreTable store = BookStoreTable.$;
+
+int affectedRowCount = sqlClient
+    .createInsert(store, source)
+    .set(store.id(), source.getId())
+    .set(store.name(), source.getName())
+    .set(store.website(), source.getWebsite())
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val affectedRowCount = sqlClient
+    .createInsert(BookStore::class, source) {
+        set(table.id, sourceTable.id)
+        set(table.name, sourceTable.name)
+        set(table.website, sourceTable.website)
+    }
+    .execute()
+```
+
+`set`定义插入赋值。值可以是source表达式或常量，不能读取目标表中已经存在的行。
+数据库方言支持该操作时，会生成`INSERT ... SELECT`。
+
+未指定的目标列保留正常的生成值、数据库默认值以及框架初始化行为。例如，未指定的`@Version`
+会在插入时初始化。没有默认值的必填列被省略时，插入仍然会失败。
+
+### 忽略冲突
+
+插入默认采用严格模式，冲突会导致错误。要跳过与指定唯一键冲突的数据行，在`execute`之前添加以下配置之一：
+
+**Java**
+
+```java
+.onConflictDoNothing(store.id())
+
+// Or infer the conflict key from metadata:
+.onConflictDoNothing()
+```
+
+**Kotlin**
+
+```kotlin
+onConflictDoNothing(table.id)
+
+// Or infer the conflict key from metadata:
+onConflictDoNothing()
+```
+
+显式形式必须覆盖完整的id或元数据声明的一个key组，每个冲突列都需要插入赋值。无参数形式
+选择优先级最高且具备完整赋值的组：先检查id，再按元数据顺序检查key组。它选择的是一个键，
+不是表上的所有唯一约束。没有可用的组时，指令会在修改数据前报错。
+
+显式传入空属性数组是不合法的；需要推断时应使用无参数重载。被跳过的冲突行不会包含在returning结果中。
+
+## 从实体查询提供source数据行
+
+同一个`StoreInputMapper`也可以选择普通查询的结果。下面的source选择已有书店，并提供新的网址。
+把它用于后面的upsert，即可更新被选中的数据行：
+
+**Java**
+
+```java
+BookStoreTable existing = new BookStoreTable();
+
+StoreInputTable source = sqlClient
+    .createBaseQuery(existing)
+    .where(existing.name().eq("Old Store"))
+    .select(
+        StoreInputMapper
+            .id(existing.id())
+            .name(existing.name())
+            .website(Expression.value("https://new.example.com"))
+    )
+    .asBaseTable();
+```
+
+**Kotlin**
+
+```kotlin
+val source = baseTableSymbol {
+    sqlClient.createBaseQuery(BookStore::class) {
+        where(table.name eq "Old Store")
+        select(
+            StoreInputMapper
+                .id(table.id)
+                .name(table.name)
+                .website(value("https://new.example.com"))
+        )
+    }
+}
+```
+
+查询提供全部匹配行，应用代码无需先把它们加载为实体对象。这些id已经存在，因此把这个source
+用于严格插入会产生冲突。
+
+## Upsert
+
+Upsert分别声明冲突键、仅插入的值、仅更新的表达式，以及两个分支都要写入的值：
+
+**Java**
+
+```java
+int affectedRowCount = sqlClient
+    .createUpsert(store, source)
+    .key(store.id(), source.getId())
+    .insert(store.name(), source.getName())
+    .merge(store.website(), source.getWebsite())
+    .update(store.version(), store.version().plus(1))
+    .updateWhere(store.version().lt(10))
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val affectedRowCount = sqlClient
+    .createUpsert(BookStore::class, source) {
+        key(table.id, sourceTable.id)
+        insert(table.name, sourceTable.name)
+        merge(table.website, sourceTable.website)
+        update(table.version, table.version + 1)
+        updateWhere(table.version lt 10)
+    }
+    .execute()
+```
+
+对于新id，该指令插入名称和网址，并把版本初始化为零。对于已经存在且版本小于十的id，它保留
+名称、替换网址，并把数据库中的版本加一。版本已经达到十或更大的冲突行保持不变。
+
+| 方法 | 插入分支 | 被接受的更新分支 |
+| --- | --- | --- |
+| `key(target, source)` | 插入source值，并用于定位冲突 | 保留键值 |
+| `insert(target, source)` | 插入source值 | 保留原值 |
+| `update(target, expression)` | 使用默认值或框架初始化值 | 赋予表达式的值 |
+| `merge(target, source)` | 插入source值 | 赋予source值 |
+| `merge(target, insertSource, updateExpression)` | 使用插入表达式 | 使用更新表达式 |
+
+每个物理目标列只能赋值一次。同一列需要不同的插入和更新表达式时，使用三个参数的`merge`。
+
+### 更新表达式
+
+更新表达式可以读取目标表中的现有行和source。例如，给定价格source，
+`merge(book.price(), source.getPrice(), book.price().plus(source.getPrice()))`
+会为新行插入source价格，为冲突行把source价格累加到数据库价格上。
+
+`update`不提供插入值，适用于需要保留数据库默认值，或者只对现有行有意义的表达式。其目标必须
+映射到一个物理列，包括嵌入对象的标量成员或关联维护方的外键id。Id、鉴别器和逻辑删除属性
+不能作为仅更新的目标。
+
+版本采用赋值语义：不会隐式添加乐观锁条件，也不会自动递增。需要递增时必须像上面的示例一样
+显式指定。保存指令中对应的配置请参阅[版本模式](save-command/version-mode.md)。
+
+### 键和更新条件
+
+所有`key`赋值必须共同覆盖一个完整的唯一id或key组。source中不能出现该键相同的多行数据。
+物化执行计划会在写入前检查source键重复；原生SQL执行计划由数据库处理对这一前提的违反。
+
+`updateWhere`只限制冲突行的更新分支。没有冲突的行仍然插入。多次调用中的非null条件以`AND`
+组合，条件可以同时使用target和source的值。
+
+:::note
+没有`update`或`merge`赋值的upsert仍然具有更新语义。必要时Jimmer会生成安全的自赋值操作，
+这可能影响数据库触发器、锁、生成值、returning和影响行数。它与`onConflictDoNothing()`不同，
+而且`updateWhere`仍然生效。
+:::
+
+## 返回数据行
+
+**Java**
+
+```java
+List<Tuple2<Long, Integer>> rows = sqlClient
+    .createUpsert(store, source)
+    .key(store.id(), source.getId())
+    .insert(store.name(), source.getName())
+    .merge(store.website(), source.getWebsite())
+    .update(store.version(), store.version().plus(1))
+    .returning(store.id(), store.version())
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+val rows = sqlClient
+    .createUpsertReturning(BookStore::class, source) {
+        key(table.id, sourceTable.id)
+        insert(table.name, sourceTable.name)
+        merge(table.website, sourceTable.website)
+        update(table.version, table.version + 1)
+        returning(table.id, table.version)
+    }
+    .execute()
+```
+
+插入使用Java的`createInsert(...).returning(...)`或Kotlin的`createInsertReturning(...)`。
+Kotlin还提供reified工厂，以及立即执行的`executeInsert`、`executeUpsert`、
+`executeInsertReturning`和`executeUpsertReturning`辅助函数。
+
+Returning支持物理目标属性、由这些属性组成的元组，或者[类型化元组mapper](../query/typed-tuple.md)。
+结果是修改后数据库中的值，包括生成的id和默认值。它包含插入行以及被接受的更新行，也包含
+被接受的自赋值更新。被跳过的冲突，以及被`updateWhere`或子类型鉴别器拒绝的更新，不会返回。
+
+不支持fetcher对象图、连接或计算型选择项，也没有区分“插入/更新”的返回标记。返回顺序不作保证。
+不带returning的`execute()`返回数据库/JDBC影响行数，不同方言可能不同；returning列表大小则是
+实际进入被接受修改分支的行数。
+
+## 关联表
+
+中间表支持插入和不存在时插入，使用相同的类型安全source模型。假设`pairs`提供`bookId`和`authorId`：
+
+**Java**
+
+```java
+AssociationTable<Book, BookTableEx, Author, AuthorTableEx> association =
+    AssociationTable.of(BookTableEx.class, BookTableEx::authors);
+
+sqlClient
+    .createInsert(association, pairs)
+    .set(association.<Long>sourceId(), pairs.getBookId())
+    .set(association.<Long>targetId(), pairs.getAuthorId())
+    .onConflictDoNothing()
+    .execute();
+```
+
+**Kotlin**
+
+```kotlin
+sqlClient
+    .createInsert(Book::authors, pairs) {
+        set(table.sourceId, sourceTable.bookId)
+        set(table.targetId, sourceTable.authorId)
+        onConflictDoNothing()
+    }
+    .execute()
+```
+
+推断的冲突键是source-id和target-id的组合。Returning可以选择这些id或类型化元组，只返回
+新插入的关联对。API不提供关联upsert。Kotlin的关联属性重载要求该关联基于中间表。
+
+Java的`createQuery(association)`和`createBaseQuery(association)`也接受同一个关联表。
+`createAssociationQuery`是已弃用的查询工厂别名。
+
+## 执行方式和一致性
+
+数据库方言能够保持所需语义时，Jimmer使用原生`INSERT ... SELECT`、`ON CONFLICT`、
+`ON DUPLICATE KEY UPDATE`或`MERGE`。否则会物化所需的source值，并交给正常的保存流程处理。
+例如，某些冲突语法不能读取没有插入赋值的source值，某些方言不能原生返回全部被接受的行。
+
+两种路径都保持默认值、[事务事件](./trigger.md)和被接受修改的缓存失效行为。事务触发器配置可能
+要求物化路径，以获取修改前后的行。被拒绝的更新和被跳过的插入，不会为该行产生修改事件或缓存失效。
+
+实体目标必须映射到一个物理表。支持单表继承子类型，不支持多表继承目标。与另一个子类型的行冲突时，
+更新会被拒绝，不会修改鉴别器。与保存指令一样，自然键冲突匹配会考虑逻辑删除元数据。
+
+:::caution
+物化路径可能先查询再执行DML，不会暗中添加悲观锁。如果这些步骤之间可能发生并发修改，
+应使用适当的事务隔离级别，或显式锁住所需范围。不能假定每个支持的指令都会以单条原子SQL执行。
+:::
+
+输入是对象或对象图时，应使用[保存指令](https://babyfish-ct.github.io/jimmer-doc/zh/docs/mutation/save-command)。其[赋值表达式](save-command/assignment.md)、
+[更新条件](save-command/update-where.md)和[upsert mask](save-command/upsert-mask.md)提供对应的控制能力。

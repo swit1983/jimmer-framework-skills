@@ -307,6 +307,6 @@ Jimmer 为 Java 用户提供 APT 支持，为 Kotlin 用户提供 KSP 支持。
 
 ## 参考
 
-- [Jimmer 官方文档 - APT/KSP](https://jimmer.deno.dev/zh/docs/overview/apt-ksp)
+- [Jimmer 官方文档 - APT/KSP](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/apt-ksp)
 - [IntelliJ IDEA - Annotation Processors](https://www.jetbrains.com/help/idea/annotation-processors-support.html)
 - [Kotlin - KSP Overview](https://kotlinlang.org/docs/ksp-overview.html)

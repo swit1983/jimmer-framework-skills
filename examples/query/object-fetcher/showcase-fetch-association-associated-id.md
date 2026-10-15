@@ -1,9 +1,9 @@
 # 2.4 关联Id
 
-> 来源: https://jimmer.deno.dev/zh/docs/showcase/fetch-association/associated-id
+> 来源: https://babyfish-ct.github.io/jimmer-doc/zh/docs/showcase/fetch-association/associated-id
 
-* [案例展示 ★](/zh/docs/showcase/)
-* [2. 抓取关联](/zh/docs/showcase/fetch-association/)
+* [案例展示 ★](../../../docs/showcase.md)
+* [2. 抓取关联](../../../docs/showcase/fetch-association.md)
 * 2.4 关联Id
 
 本页总览
@@ -92,7 +92,7 @@ val books = sqlClient
 
 ### 有IdView属性时[​](#有idview属性时 "有IdView属性时的直接链接")
 
-为了解决上面的问题，我们可以为实体添加[@IdView](/zh/docs/mapping/advanced/view/id-view)属性，即关联id属性
+为了解决上面的问题，我们可以为实体添加[@IdView](../../../docs/mapping/advanced/view/id-view.md)属性，即关联id属性
 
 * Java
 * Kotlin
@@ -129,7 +129,7 @@ interface Book {
 
 信息
 
-这里仅作案例展示，不对@IdView属性做深入探讨，清参考[这里](/zh/docs/mapping/advanced/view/id-view)
+这里仅作案例展示，不对@IdView属性做深入探讨，清参考[这里](../../../docs/mapping/advanced/view/id-view.md)
 
 * Java
 * Kotlin

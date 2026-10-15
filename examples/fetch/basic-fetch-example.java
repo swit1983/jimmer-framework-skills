@@ -1,16 +1,34 @@
 /**
  * Jimmer Fetcher 基础示例 - Java
- * 
- * Fetcher 用于控制查询返回的数据结构形状
+ *
+ * Fetcher 用于描述查询返回的数据结构（对象图）形状。
+ *
+ * 关键约定（务必记住）：
+ *  1. Fetcher 不能直接传给 select，必须包装成 Selection：
+ *         .select(table.fetch(fetcher))
+ *  2. View DTO 查询用：
+ *         .select(table.fetch(SomeDto.class))
+ *  3. 递归抓取用编译时生成的 recursiveXxx() 方法。
+ *
+ * API 已对照 jimmer v0.12.4 源码与官方文档校验。
  */
 package com.example.service;
 
+import com.example.dto.BookStoreDto;
+import com.example.model.Book;
+import com.example.model.BookTable;
+import com.example.model.Category;
+import com.example.model.CategoryTable;
+import com.example.model.BookStoreTable;
+import com.example.model.Fetchers;
+import com.example.model.BookFetcher;
+import com.example.model.BookStoreFetcher;
+import com.example.model.AuthorFetcher;
+import com.example.model.CategoryFetcher;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
-import org.babyfish.jimmer.sql.fetcher.DtoFetcher;
-import com.example.model.*;
-import com.example.dto.*;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 /**
@@ -26,123 +44,110 @@ public class BookService {
     }
 
     /**
-     * 示例 1：只查询书籍的基本属性，不查询关联
-     * 返回残缺对象，只包含指定属性
+     * 示例 1：只查询书籍的基本属性，不查关联
+     * 返回 "残缺对象"，只包含 Fetcher 指定的属性。
      */
     public List<Book> findSimpleBooks() {
-        // 定义 Fetcher: 只获取 id, name, edition, price
-        Fetcher<Book> simpleBookFetcher = BookFetcher.$
+        Fetcher<Book> simpleBookFetcher = Fetchers.BOOK_FETCHER
                 .id()
                 .name()
                 .edition()
                 .price();
 
-        // 执行查询
+        BookTable table = BookTable.$;
         return jSqlClient
-                .createQuery(BookTable.$)
-                .where(BookTable.$.name().ilike("GraphQL"))
-                .select(simpleBookFetcher)
+                .createQuery(table)
+                .where(table.name().ilike("GraphQL"))
+                .select(table.fetch(simpleBookFetcher))
                 .execute();
     }
 
     /**
-     * 示例 2：查询书籍及其书店信息
-     * 一级关联嵌套
+     * 示例 2：一级关联嵌套
      */
     public List<Book> findBooksWithStore() {
-        Fetcher<Book> bookWithStoreFetcher = BookFetcher.$
+        Fetcher<Book> bookWithStoreFetcher = Fetchers.BOOK_FETCHER
                 .id()
                 .name()
                 .edition()
                 .price()
-                .store(store -> store
+                .store(BookStoreFetcher.$
                         .id()
                         .name()
                         .website()
                 );
 
+        BookTable table = BookTable.$;
         return jSqlClient
-                .createQuery(BookTable.$)
-                .select(bookWithStoreFetcher)
+                .createQuery(table)
+                .select(table.fetch(bookWithStoreFetcher))
                 .execute();
     }
 
     /**
-     * 示例 3：深度嵌套查询
-     * 书籍 -> 书店 + 作者，完整树形结构
+     * 示例 3：深度嵌套抓取
+     * allScalarFields() 一次性抓取所有标量属性。
      */
     public List<Book> findBooksWithAll() {
-        Fetcher<Book> bookFullFetcher = BookFetcher.$
-                .allScalarFields() // 包含所有标量属性
-                .store(BookStoreFetcher.$
-                        .allScalarFields()
-                )
-                .authors(AuthorFetcher.$
-                        .allScalarFields()
-                );
+        Fetcher<Book> bookFullFetcher = Fetchers.BOOK_FETCHER
+                .allScalarFields()
+                .store(BookStoreFetcher.$.allScalarFields())
+                .authors(AuthorFetcher.$.allScalarFields());
 
+        BookTable table = BookTable.$;
         return jSqlClient
-                .createQuery(BookTable.$)
-                .select(bookFullFetcher)
+                .createQuery(table)
+                .select(table.fetch(bookFullFetcher))
                 .execute();
     }
 
     /**
-     * 示例 4：递归查询自关联
-     * 适用于分类、评论等树形结构
+     * 示例 4：无限递归抓取（自关联）
+     *
+     * 编译时 Jimmer 会为自关联属性生成 recursiveXxx() 方法，
+     * 递归抓取无需再描述子对象形状，子对象形状即自身。
      */
     public List<Category> findCategoryTree() {
-        // 递归定义：查询子类直到最深层次
-        Fetcher<Category> recursiveFetcher = CategoryFetcher.$
+        Fetcher<Category> recursiveFetcher = Fetchers.CATEGORY_FETCHER
                 .id()
                 .name()
-                .children(child -> child
-                        .id()
-                        .name()
-                        .children(/* 递归引用 */ this)
-                );
+                .recursiveChildNodes();
 
+        CategoryTable table = CategoryTable.$;
         return jSqlClient
-                .createQuery(CategoryTable.$)
-                .where(CategoryTable.$.parent().isNull()) // 查询根节点
-                .select(recursiveFetcher)
+                .createQuery(table)
+                .where(table.parent().isNull())   // 只查根节点
+                .select(table.fetch(recursiveFetcher))
                 .execute();
     }
 
     /**
-     * 示例 5：限制递归深度
-     * 避免无限递归
+     * 示例 5：限制递归深度（抓取两层）
      */
     public List<Category> findCategoryWithMaxDepth() {
-        // 最多递归 3 层
-        Fetcher<Category> limitedRecursion = CategoryFetcher.$
+        Fetcher<Category> limitedRecursion = Fetchers.CATEGORY_FETCHER
                 .id()
                 .name()
-                .children(3, child -> child
-                        .id()
-                        .name()
-                );
+                .recursiveChildNodes(it -> it.depth(2));
 
+        CategoryTable table = CategoryTable.$;
         return jSqlClient
-                .createQuery(CategoryTable.$)
-                .where(CategoryTable.$.parent().isNull())
-                .select(limitedRecursion)
+                .createQuery(table)
+                .where(table.parent().isNull())
+                .select(table.fetch(limitedRecursion))
                 .execute();
     }
 
     /**
-     * 示例 6：直接使用 DTO 进行查询
-     * 基于 DTO 定义自动生成 Fetcher
+     * 示例 6：直接使用 View DTO 查询
+     * DTO 定义本身描述了要抓取哪些字段，
+     * 用 table.fetch(DTO.class) 即可，无需自己拼 Fetcher。
      */
     public List<BookStoreDto> findBookStoreDtos() {
-        // DTO 定义已经说明了需要哪些字段
-        // 直接使用 DtoFetcher 转换
-        DtoFetcher<BookStore, BookStoreDto> fetcher = 
-                BookStoreDto.dtoFetcher();
-        
+        BookStoreTable table = BookStoreTable.$;
         return jSqlClient
-                .createQuery(BookStoreTable.$)
-                .select(fetcher)
+                .createQuery(table)
+                .select(table.fetch(BookStoreDto.class))
                 .execute();
     }
 }

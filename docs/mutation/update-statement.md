@@ -1,214 +1,400 @@
 ---
-title: '修改语句'
+title: 修改语句
+source: https://babyfish-ct.github.io/jimmer-doc/zh/docs/mutation/update-statement
 ---
-# 修改语句
 
+# 修改语句
 
 ## 基本用法
 
-
 Update语句用法如下
 
+**Java**
 
-- Java
-- Kotlin
+```java
+AuthorTable author = Tables.AUTHOR_TABLE;
 
-
+int affectedRowCount = sqlClient
+    .createUpdate(author)
+    .set(
+        author.firstName(),
+        author.firstName().concat("*")
+    )
+    .where(author.firstName().eq("Dan"))
+    .execute();
+System.out.println("Affected row count: " + affectedRowCount);
 ```
-AuthorTable author = Tables.AUTHOR_TABLE;int affectedRowCount = sqlClient    .createUpdate(author)    .set(        author.firstName(),        author.firstName().concat("*")    )    .where(author.firstName().eq("Dan"))    .execute();System.out.println("Affected row count: " + affectedRowCount);
-```
 
+**Kotlin**
 
+```kotlin
+val affectedRowCount = sqlClient
+    .createUpdate(Author::class) {
+        set(
+            table.firstName,
+            concat(table.firstName, value("*"))
+        )
+        where(table.firstName eq "Dan")
+    }
+    .execute()
+println("Affected row count: $affectedRowCount")
 ```
-val affectedRowCount = sqlClient    .createUpdate(Author::class) {        set(            table.firstName,             concat(table.firstName, value("*"))        )        where(table.firstName eq "Dan")    }    .execute()println("Affected row count: $affectedRowCount")
-```
-
 
 最终生成的SQL
 
-
+```csharp
+update AUTHOR tb_1_
+set FIRST_NAME = concat(tb_1_.FIRST_NAME, ?)
+where tb_1_.FIRST_NAME = ?
 ```
-update AUTHOR tb_1_ set FIRST_NAME = concat(tb_1_.FIRST_NAME, ?) where tb_1_.FIRST_NAME = ?
+
+## 返回更新后的行
+
+如果需要立即获得更新后的值，update可以在同一条数据库语句中返回每个受影响行的指定列。
+
+**Java**
+
+```java
+AuthorTable author = Tables.AUTHOR_TABLE;
+
+List<Tuple2<Long, String>> rows = sqlClient
+    .createUpdate(author)
+    .set(
+        author.firstName(),
+        author.firstName().concat("*")
+    )
+    .where(author.firstName().eq("Dan"))
+    .returning(author.id(), author.firstName())
+    .execute();
 ```
 
+**Kotlin**
+
+```kotlin
+val rows: List<Tuple2<Long, String>> = sqlClient
+    .createUpdateReturning(Author::class) {
+        set(
+            table.firstName,
+            concat(table.firstName, value("*"))
+        )
+        where(table.firstName eq "Dan")
+        returning(table.id, table.firstName)
+    }
+    .execute()
+```
+
+Java在`createUpdate`创建的`MutableUpdate`上调用`returning(...)`。Kotlin使用
+`createUpdateReturning`，因为它的lambda需要返回`returning(...)`创建的可执行对象；
+`executeUpdateReturning`是立即执行它的快捷方法。
+
+单个选择返回该值的列表，多个选择返回tuple；Java还可以使用生成的强类型tuple mapper。
+和查询一样，可以用`execute()`把返回行读取为列表，也可以用`stream()`以可关闭流的形式处理：
+
+**Java**
+
+```java
+try (Stream<Tuple2<Long, String>> rows = sqlClient
+        .createUpdate(author)
+        .set(author.firstName(), "Daniel")
+        .where(author.firstName().eq("Dan"))
+        .returning(author.id(), author.firstName())
+        .stream()) {
+    rows.forEach(System.out::println);
+}
+```
+
+**Kotlin**
+
+```kotlin
+sqlClient.createUpdateReturning(Author::class) {
+    set(table.firstName, "Daniel")
+    where(table.firstName eq "Dan")
+    returning(table.id, table.firstName)
+}.stream().use { rows ->
+    rows.forEach(::println)
+}
+```
+
+Update returning目前由`H2Dialect`和`PostgresDialect`支持。对不支持update returning的方言
+使用该API会抛出异常。
+
+只能选择属于被更新表的物理列属性，不能返回关联、公式、任意表达式或join表中的列。
+对于`JOINED`继承，赋值和返回列必须属于同一个物理表。
+
+与[保存结果获取](save-command/returning.md)不同，这是显式DML API：它不会创建残余fetcher，
+也不会执行fallback查询。如果保存后需要完整的实体图，请使用
+`saveCommand(...).execute(fetcher)`。
 
 ## 使用JOIN
 
-
 默认情况下，update语句不支持join，这会导致异常
 
+**Java**
 
-- Java
-- Kotlin
+```java
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
 
+int affectedRowCount = sqlClient
+    .createUpdate(author)
+    .set(
+        author.firstName(),
+        author.firstName().concat("*")
+    )
+    .where(
+        author
 
+            .books()
+            .name()
+            .eq("Learning GraphQL")
+    )
+    .execute();
+System.out.println("Affected row count: " + affectedRowCount);
 ```
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;int affectedRowCount = sqlClient    .createUpdate(author)    .set(        author.firstName(),        author.firstName().concat("*")    )    .where(        author            .books()            .name()            .eq("Learning GraphQL")    )    .execute();System.out.println("Affected row count: " + affectedRowCount);
-```
 
+**Kotlin**
 
-```
-val affectedRowCount = sqlClient    .createUpdate(Author::class) {        set(            table.firstName,            concat(table.firstName, value("*"))        )        where(            table                .books                .name                 eq "Learning GraphQL"        )    }    .execute()println("Affected row count: $affectedRowCount")
-```
+```kotlin
+val affectedRowCount = sqlClient
+    .createUpdate(Author::class) {
+        set(
+            table.firstName,
+            concat(table.firstName, value("*"))
+        )
+        where(
+            table
 
+                .books
+                .name
+                eq "Learning GraphQL"
+        )
+    }
+    .execute()
+println("Affected row count: $affectedRowCount")
+```
 
 异常信息如下
-
-
 ```
 Table joins for update statement is forbidden by the current dialect, but there is a join `'Author.books'`.
 ```
 
-
 当使用MySql或Postgres时，update语句可以使用JOIN语句。
-
 
 ### MySql
 
-
 首先，需要在创建SqlClient时，指定方言为MySqlDialect
 
+-   SpringBoot下的配置
 
-- SpringBoot下的配置
+    在`application.yml`或`application.properties`中声明方言
 
-
-在`application.yml`或`application.properties`中声明方言
-
-
-```
-jimmer:    dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
-```
-- 非SpringBoot下的配置
-
-
-- Java
-- Kotlin
-
-
-```
-JSqlClient sqlClient = JSqlClient    .newBuilder()    .setDialect(        new org.babyfish.jimmer.sql.dialect.MySqlDialect()    )    ...    .build();
+```title="application.yml"
+jimmer:
+    dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
 ```
 
+-   非SpringBoot下的配置
 
-```
-val sqlClient = newKSqlClient {    setDialect(org.babyfish.jimmer.sql.dialect.MySqlDialect())}
+**Java**
+
+```java
+JSqlClient sqlClient = JSqlClient
+    .newBuilder()
+    .setDialect(
+        new org.babyfish.jimmer.sql.dialect.MySqlDialect()
+    )
+    ...
+    .build();
 ```
 
+**Kotlin**
+
+```kotlin
+val sqlClient = newKSqlClient {
+    setDialect(org.babyfish.jimmer.sql.dialect.MySqlDialect())
+}
+```
 
 然后，就可以在update中使用JOIN了
 
+**Java**
 
-- Java
-- Kotlin
+```java
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
 
-
+int affectedRowCount = sqlClient
+    .createUpdate(author)
+    .set(
+        author.firstName(),
+        author.firstName().concat("*")
+    )
+    .set(
+        author.books().name(),
+        author.books().name().concat("*")
+    )
+    .set(
+        author.books().store().name(),
+        author.books().store().name().concat("*")
+    )
+    .where(
+        author.books().store().name().eq("MANNING")
+    )
+    .execute();
+System.out.println("Affected row count: " + affectedRowCount);
 ```
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;int affectedRowCount = sqlClient    .createUpdate(author)    .set(        author.firstName(),        author.firstName().concat("*")    )    .set(        author.books().name(),        author.books().name().concat("*")    )    .set(        author.books().store().name(),        author.books().store().name().concat("*")    )    .where(        author.books().store().name().eq("MANNING")    )    .execute();System.out.println("Affected row count: " + affectedRowCount);
-```
 
+**Kotlin**
 
+```kotlin
+val affectedRowCount = sqlClient
+    .createUpdate(Author::class) {
+        set(
+            table.firstName,
+            concat(table.firstName, value("*"))
+        )
+        set(
+            table.books.name,
+            concat(table.books.name, value("*"))
+        )
+        set(
+            table.books.store.name,
+            concat(table.books.store.name, value("*"))
+        )
+        where(
+            table.books.store.name eq "MANNING"
+        )
+    }
+    .execute()
+println("Affected row count: $affectedRowCount")
 ```
-val affectedRowCount = sqlClient    .createUpdate(Author::class) {        set(            table.firstName,            concat(table.firstName, value("*"))        )        set(            table.books.name,            concat(table.books.name, value("*"))        )        set(            table.books.store.name,            concat(table.books.store.name, value("*"))        )        where(            table.books.store.name eq "MANNING"        )    }    .execute()println("Affected row count: $affectedRowCount")
-```
-
 
 最终生成针对MySQL的SQL语句，如下：
 
-
+```csharp
+update
+    AUTHOR tb_1_
+    inner join BOOK_AUTHOR_MAPPING as tb_2_
+        on tb_1_.ID = tb_2_.AUTHOR_ID
+    inner join BOOK as tb_3_
+        on tb_2_.BOOK_ID = tb_3_.ID
+    inner join BOOK_STORE as tb_4_
+        on tb_3_.STORE_ID = tb_4_.ID
+set
+    tb_1_.FIRST_NAME = concat(tb_1_.FIRST_NAME, ?),
+    tb_3_.NAME = concat(tb_3_.NAME, ?),
+    tb_4_.NAME = concat(tb_4_.NAME, ?)
+where
+    tb_4_.NAME = ?
 ```
-update     AUTHOR tb_1_     inner join BOOK_AUTHOR_MAPPING as tb_2_         on tb_1_.ID = tb_2_.AUTHOR_ID     inner join BOOK as tb_3_         on tb_2_.BOOK_ID = tb_3_.ID     inner join BOOK_STORE as tb_4_         on tb_3_.STORE_ID = tb_4_.ID set     tb_1_.FIRST_NAME = concat(tb_1_.FIRST_NAME, ?),     tb_3_.NAME = concat(tb_3_.NAME, ?),     tb_4_.NAME = concat(tb_4_.NAME, ?) where     tb_4_.NAME = ?
-```
-
 
 ### Postgres
 
-
 首先，需要在创建SqlClient时，指定方言为PostgresDialect
 
+-   SpringBoot下的配置
 
-- SpringBoot下的配置
+    在`application.yml`或`application.properties`中声明方言配置配置
 
-
-在`application.yml`或`application.properties`中声明方言配置配置
-
-
-```
-jimmer:    dialect: org.babyfish.jimmer.sql.dialect.PostgresDialect
-```
-- 非SpringBoot下的配置
-
-
-- Java
-- Kotlin
-
-
-```
-JSqlClient sqlClient = JSqlClient    .newBuilder()    .setDialect(        new org.babyfish.jimmer.sql.dialect.PostgresDialect()    )    ...    .build();
+```title="application.yml"
+jimmer:
+    dialect: org.babyfish.jimmer.sql.dialect.PostgresDialect
 ```
 
+-   非SpringBoot下的配置
 
-```
-val sqlClient = newKSqlClient {    setDialect(org.babyfish.jimmer.sql.dialect.PostgresDialect())}
+**Java**
+
+```java
+JSqlClient sqlClient = JSqlClient
+    .newBuilder()
+    .setDialect(
+        new org.babyfish.jimmer.sql.dialect.PostgresDialect()
+    )
+    ...
+    .build();
 ```
 
+**Kotlin**
+
+```kotlin
+val sqlClient = newKSqlClient {
+    setDialect(org.babyfish.jimmer.sql.dialect.PostgresDialect())
+}
+```
 
 然后，就可以在update中使用JOIN了
 
+**Java**
 
-- Java
-- Kotlin
+```java
+AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;
 
-
+int affectedRowCount = sqlClient
+    .createUpdate(author)
+    .set(
+        author.firstName(),
+        author.firstName().concat("*")
+    )
+    .where(
+        author.books().store().name().eq("MANNING")
+    )
+    .execute();
+System.out.println("Affected row count: " + affectedRowCount);
 ```
-AuthorTableEx author = TableExes.AUTHOR_TABLE_EX;int affectedRowCount = sqlClient    .createUpdate(author)    .set(        author.firstName(),        author.firstName().concat("*")    )    .where(        author.books().store().name().eq("MANNING")    )    .execute();System.out.println("Affected row count: " + affectedRowCount);
+
+**Kotlin**
+
+```kotlin
+val affectedRowCount = sqlClient
+    .createUpdate(Author::class) {
+        set(
+            table.firstName,
+            concat(table.firstName, value("*"))
+        )
+        where(
+            table.books.store.name eq "MANNING"
+        )
+    }
+    .execute()
+println("Affected row count: $affectedRowCount")
 ```
 
-
-```
-val affectedRowCount = sqlClient    .createUpdate(Author::class) {        set(            table.firstName,            concat(table.firstName, value("*"))        )        where(            table.books.store.name eq "MANNING"        )    }    .execute()println("Affected row count: $affectedRowCount")
-```
-
-
-警告
-
+:::caution
 和MySql不同，在Postgres中使用update语句的JOIN存在如下限制
 
-
 1. 只能在`where`子句中使用表连接，不能在`set`子句中使用表连接。即Postgres还是只允许修改当前表的字段，支持连接到其它表仅仅是为了做条件过滤。
-2. 连接路径可以具有多级，如`author.books().store()`，其中，`books()`是第1级，`store()`是第2级。其中，第一级连接的类型必须是`inner join`。
 
+2. 连接路径可以具有多级，如`author.books().store()`，其中，`books()`是第1级，`store()`是第2级。其中，第一级连接的类型必须是`inner join`。
+:::
 
 最终生成针对Postgres的SQL语句，如下：
 
-
+```csharp
+update
+    AUTHOR tb_1_
+set
+    FIRST_NAME = concat(tb_1_.FIRST_NAME, ?)
+from BOOK_AUTHOR_MAPPING as tb_2_ ❶
+inner join BOOK as tb_3_ ❷
+    on tb_2_.BOOK_ID = tb_3_.ID
+inner join BOOK_STORE as tb_4_ ❸
+    on tb_3_.STORE_ID = tb_4_.ID
+where
+    tb_1_.ID = tb_2_.AUTHOR_ID ❹
+and
+    tb_4_.NAME = ?
 ```
-update     AUTHOR tb_1_ set     FIRST_NAME = concat(tb_1_.FIRST_NAME, ?) from BOOK_AUTHOR_MAPPING as tb_2_ ❶inner join BOOK as tb_3_ ❷    on tb_2_.BOOK_ID = tb_3_.ID inner join BOOK_STORE as tb_4_ ❸    on tb_3_.STORE_ID = tb_4_.ID where     tb_1_.ID = tb_2_.AUTHOR_ID ❹and     tb_4_.NAME = ?
-```
 
-
-信息
-
+:::info
 连接路径`author.books().store()`有两级，`books()`是第1级，`store()`是第2级。
 
+1.  第一级`books()`涉及两张表
+    - ❶ 处的`BOOK_AUTHOR_MAPPING`表，但这里缺少连接条件，连接条件在❹处补上。
+    - ❷ 处的`BOOK`表
 
-1. 第一级`books()`涉及两张表
-
-
-- ❶ 处的`BOOK_AUTHOR_MAPPING`表，但这里缺少连接条件，连接条件在❹处补上。
-- ❷ 处的`BOOK`表
-2. 第二级`store()`涉及一张表
-
-
-- ❹ `处的`BOOK_STORE`表
-
+2.  第二级`store()`涉及一张表
+    - ❹ `处的`BOOK_STORE`表
 
 可见，在Postgres的update语句中，直接和主表相关的表连接不能使用`join` + `on`的写法，必须等价变换为`from` + `where`的写法。
 
-
 这就是Jimmer规定Postgres方言下update语句第一级连接的类型必须是`inner join`的原因。
-
-[编辑此页](https://github.com/babyfish-ct/jimmer-doc/edit/main/i18n/zh/docusaurus-plugin-content-docs/current/mutation/update-statement.mdx)最后 于 **2025年9月16日**  更新
-- [基本用法](#基本用法)
-- [使用JOIN](#使用join)
-- [MySql](#mysql)
-- [Postgres](#postgres)
+:::
